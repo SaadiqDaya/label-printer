@@ -32,7 +32,7 @@ public static class PrintService
         copies = Math.Max(1, copies);
         for (int i = 0; i < copies; i++)
         {
-            var visual = BuildPrintVisual(template, fields);
+            var visual = BuildPrintVisual(template, fields, barcodeScale: 4);
             dialog.PrintVisual(visual, template.Name);
         }
     }
@@ -40,7 +40,7 @@ public static class PrintService
     /// <summary>Renders the template to a BitmapSource (for preview).</summary>
     public static BitmapSource RenderPreview(LabelTemplate template, Dictionary<string, string> fields, double dpi = 96)
     {
-        var visual = BuildPrintVisual(template, fields);
+        var visual = BuildPrintVisual(template, fields, barcodeScale: 2);
         visual.Measure(new Size(template.WidthPx, template.HeightPx));
         visual.Arrange(new Rect(0, 0, template.WidthPx, template.HeightPx));
         visual.UpdateLayout();
@@ -48,7 +48,7 @@ public static class PrintService
     }
 
     // ─── Build print visual ────────────────────────────────────────────────
-    private static UIElement BuildPrintVisual(LabelTemplate template, Dictionary<string, string> fields)
+    private static UIElement BuildPrintVisual(LabelTemplate template, Dictionary<string, string> fields, int barcodeScale = 1)
     {
         var canvas = new Canvas
         {
@@ -62,7 +62,7 @@ public static class PrintService
             UIElement? ui = element switch
             {
                 TextElement te => BuildText(te, fields),
-                BarcodeElement be => BuildBarcode(be, fields),
+                BarcodeElement be => BuildBarcode(be, fields, barcodeScale),
                 ImageElement ie => BuildImage(ie),
                 ShapeElement se => BuildShape(se),
                 _ => null
@@ -112,10 +112,11 @@ public static class PrintService
         return tb;
     }
 
-    private static UIElement? BuildBarcode(BarcodeElement be, Dictionary<string, string> fields)
+    private static UIElement? BuildBarcode(BarcodeElement be, Dictionary<string, string> fields, int scale = 1)
     {
         var value = be.BoundField != null && fields.TryGetValue(be.BoundField, out var fv) ? fv : be.BarcodeValue;
-        var img = BitmapHelper.GenerateBarcode(value, be.Format, (int)be.Width, (int)be.Height);
+        var s = Math.Max(1, scale);
+        var img = BitmapHelper.GenerateBarcode(value, be.Format, (int)be.Width * s, (int)be.Height * s);
         if (img == null) return null;
         return new Image { Source = img, Stretch = Stretch.Fill };
     }

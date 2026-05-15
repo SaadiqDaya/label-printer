@@ -12,6 +12,8 @@ public class BarcodeElementViewModel : ElementViewModelBase
     private bool _showText = true;
 
     public override ElementType ElementType => ElementType.Barcode;
+    public override string DisplayName =>
+        !string.IsNullOrEmpty(BoundField) ? $"Barcode [{BoundField}]" : $"Barcode \"{BarcodeValue}\"";
 
     public string BarcodeValue
     {

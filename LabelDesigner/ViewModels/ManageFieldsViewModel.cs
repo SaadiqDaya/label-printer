@@ -7,6 +7,12 @@ using System.Windows.Input;
 
 namespace LabelDesigner.ViewModels;
 
+/// <summary>A loaded column from the Excel file — used for dropdowns in the dialog.</summary>
+public record ColumnHeaderItem(string Letter, string Header)
+{
+    public string Display => $"{Letter} — {Header}";
+}
+
 /// <summary>One row in the field-to-column mapping grid.</summary>
 public class FieldMappingItem : ViewModelBase
 {
@@ -40,11 +46,11 @@ public class ManageFieldsViewModel : ViewModelBase
     private string _printQtyColumn;
     private string _newFieldName = "";
     private FieldMappingItem? _selectedMapping;
-    private string _headerHint = "";
 
     public string TemplateName => _template.Name;
 
-    public ObservableCollection<FieldMappingItem> Mappings { get; } = new();
+    public ObservableCollection<FieldMappingItem>  Mappings        { get; } = new();
+    public ObservableCollection<ColumnHeaderItem>  AvailableHeaders { get; } = new();
 
     public string ExcelPath
     {
@@ -70,18 +76,12 @@ public class ManageFieldsViewModel : ViewModelBase
         set => Set(ref _selectedMapping, value);
     }
 
-    /// <summary>Human-readable list of Excel column headers, shown as a hint below the grid.</summary>
-    public string HeaderHint
-    {
-        get => _headerHint;
-        private set => Set(ref _headerHint, value);
-    }
-
-    public bool HasHeaderHint => !string.IsNullOrEmpty(_headerHint);
+    public bool HasHeaders => AvailableHeaders.Any();
 
     public ICommand BrowseExcelCommand  => new RelayCommand(BrowseExcel);
     public ICommand AddFieldCommand     => new RelayCommand(AddField, () => !string.IsNullOrWhiteSpace(NewFieldName));
     public ICommand RemoveFieldCommand  => new RelayCommand(RemoveSelected, () => SelectedMapping != null);
+    public ICommand AutoMapCommand      => new RelayCommand(AutoMap, () => AvailableHeaders.Any() && Mappings.Any());
 
     public ManageFieldsViewModel(LabelTemplate template)
     {
@@ -124,17 +124,48 @@ public class ManageFieldsViewModel : ViewModelBase
 
     private void LoadHeaders()
     {
-        if (!File.Exists(_excelPath)) { HeaderHint = ""; OnPropertyChanged(nameof(HasHeaderHint)); return; }
+        AvailableHeaders.Clear();
+        if (!File.Exists(_excelPath))
+        {
+            OnPropertyChanged(nameof(HasHeaders));
+            return;
+        }
         try
         {
             var headers = ExcelImportService.ReadHeaders(_excelPath);
-            HeaderHint = string.Join("   ", headers.Select(h => $"{h.Letter}={h.Header}"));
+            foreach (var h in headers)
+                AvailableHeaders.Add(new ColumnHeaderItem(h.Letter, h.Header));
         }
-        catch
+        catch { /* leave empty */ }
+
+        OnPropertyChanged(nameof(HasHeaders));
+    }
+
+    /// <summary>
+    /// Matches field names to Excel column headers (case-insensitive).
+    /// Also detects a likely PrintQty column by name.
+    /// </summary>
+    private void AutoMap()
+    {
+        foreach (var mapping in Mappings)
         {
-            HeaderHint = "(Could not read headers)";
+            var match = AvailableHeaders.FirstOrDefault(h =>
+                string.Equals(h.Header, mapping.FieldName, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                mapping.ExcelColumn = match.Letter;
         }
-        OnPropertyChanged(nameof(HasHeaderHint));
+
+        // Auto-detect PrintQty column if not yet set
+        if (string.IsNullOrWhiteSpace(PrintQtyColumn))
+        {
+            var qtyMatch = AvailableHeaders.FirstOrDefault(h =>
+                h.Header.Contains("qty",      StringComparison.OrdinalIgnoreCase) ||
+                h.Header.Contains("quantity", StringComparison.OrdinalIgnoreCase) ||
+                h.Header.Contains("copies",   StringComparison.OrdinalIgnoreCase) ||
+                h.Header.Contains("count",    StringComparison.OrdinalIgnoreCase));
+            if (qtyMatch != null)
+                PrintQtyColumn = qtyMatch.Letter;
+        }
     }
 
     private void AddField()

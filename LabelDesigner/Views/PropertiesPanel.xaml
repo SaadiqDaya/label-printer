@@ -77,8 +77,10 @@
                                     <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
 
                                     <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
-                                    <TextBox Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Field name from JaneERP data (e.g. flavor, batchNumber)" />
+                                    <ComboBox IsEditable="True"
+                                              ItemsSource="{Binding AvailableFields}"
+                                              Text="{Binding BoundField, UpdateSourceTrigger=LostFocus}"
+                                              ToolTip="Select a mapped field or leave blank for static text" />
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Font">
@@ -117,8 +119,10 @@
                                 <TextBox Text="{Binding BarcodeValue, UpdateSourceTrigger=PropertyChanged}" />
 
                                 <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
-                                <TextBox Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Field name from JaneERP data (e.g. barcode)" />
+                                <ComboBox IsEditable="True"
+                                          ItemsSource="{Binding AvailableFields}"
+                                          Text="{Binding BoundField, UpdateSourceTrigger=LostFocus}"
+                                          ToolTip="Select a mapped field or leave blank for static value" />
 
                                 <TextBlock Text="Format" Style="{StaticResource Label}"/>
                                 <ComboBox SelectedItem="{Binding Format}"

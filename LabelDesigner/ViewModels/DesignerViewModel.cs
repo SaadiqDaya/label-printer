@@ -124,6 +124,7 @@ public class DesignerViewModel : ViewModelBase
 
     public void AddElement(ElementViewModelBase vm, bool recordUndo = true)
     {
+        SyncElementFields(vm);
         Elements.Add(vm);
         ElementAdded?.Invoke(this, vm);
         SelectedElement = vm;
@@ -171,6 +172,7 @@ public class DesignerViewModel : ViewModelBase
             ElementAdded?.Invoke(this, vm);
         }
 
+        SyncAvailableFields();
         UndoManager.Clear();
     }
 
@@ -194,9 +196,31 @@ public class DesignerViewModel : ViewModelBase
         };
         CurrentFilePath = null;
         SelectedElement = null;
+        SyncAvailableFields();
         UndoManager.Clear();
     }
 
+    // ─── Field sync ───────────────────────────────────────────────────────────
+    /// <summary>
+    /// Pushes the current template's field list to every element VM so the
+    /// Properties Panel can show a dropdown of available bound fields.
+    /// Call after loading a template, changing fields via Manage Fields, or adding elements.
+    /// </summary>
+    public void SyncAvailableFields()
+    {
+        foreach (var el in Elements)
+            SyncElementFields(el);
+    }
+
+    private void SyncElementFields(ElementViewModelBase vm)
+    {
+        vm.AvailableFields.Clear();
+        vm.AvailableFields.Add(""); // empty = not bound
+        foreach (var f in _template.Fields)
+            vm.AvailableFields.Add(f);
+    }
+
+    // ─── Resize ───────────────────────────────────────────────────────────────
     /// <summary>Resize the canvas without creating a new template (preserves elements and fields).</summary>
     public void ResizeCanvas(double widthMm, double heightMm)
     {

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:LabelDesigner.Converters"
         Title="Manage Fields &amp; Excel Mapping"
-        Width="580" Height="560"
+        Width="600" Height="580"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize" ShowInTaskbar="False">
 
@@ -20,37 +20,29 @@
 
         <!-- ── Excel source file ── -->
         <TextBlock DockPanel.Dock="Top" Text="Excel Source File" FontWeight="SemiBold" Margin="0,0,0,4"/>
-        <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBox Text="{Binding ExcelPath}" IsReadOnly="True" Padding="4,3"
                      ToolTip="Excel file used when importing data for this template"/>
-            <Button Grid.Column="1" Content="Browse…" Padding="8,3" Margin="4,0,0,0"
+            <Button Grid.Column="1" Content="Browse…" Padding="8,3" Margin="4,0,4,0"
                     Command="{Binding BrowseExcelCommand}"/>
+            <Button Grid.Column="2" Content="Auto Map"
+                    Padding="8,3" FontWeight="SemiBold"
+                    Background="#E3F2FD" Command="{Binding AutoMapCommand}"
+                    ToolTip="Match field names to Excel column headers automatically"/>
         </Grid>
-
-        <!-- Column headers hint from the chosen Excel file -->
-        <Border DockPanel.Dock="Top"
-                Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1"
-                Padding="6,4" Margin="0,0,0,12"
-                Visibility="{Binding HasHeaderHint, Converter={StaticResource BoolToVisibility}}">
-            <StackPanel>
-                <TextBlock Text="Available columns in this Excel file:" Foreground="#555" FontSize="10"
-                           FontWeight="SemiBold" Margin="0,0,0,2"/>
-                <TextBlock Text="{Binding HeaderHint}" Foreground="#666" FontSize="10"
-                           FontFamily="Consolas" TextWrapping="Wrap"/>
-            </StackPanel>
-        </Border>
 
         <!-- ── Field → Column mapping DataGrid ── -->
         <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,4">
             Field → Excel Column
-            <Run Foreground="#888" FontSize="11" FontWeight="Normal"> — enter the column letter (A, B, C...) for each field</Run>
+            <Run Foreground="#888" FontSize="11" FontWeight="Normal"> — select from dropdown or type a column letter</Run>
         </TextBlock>
 
-        <DataGrid DockPanel.Dock="Top" Height="190" Margin="0,0,0,6"
+        <DataGrid DockPanel.Dock="Top" Height="210" Margin="0,0,0,6"
                   ItemsSource="{Binding Mappings}"
                   SelectedItem="{Binding SelectedMapping}"
                   AutoGenerateColumns="False"
@@ -59,10 +51,38 @@
                   SelectionMode="Single"
                   GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Field Name"   Width="*"
-                                    Binding="{Binding FieldName,   UpdateSourceTrigger=PropertyChanged}"/>
-                <DataGridTextColumn Header="Excel Column" Width="110"
-                                    Binding="{Binding ExcelColumn, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <!-- Field name (read-only display) -->
+                <DataGridTextColumn Header="Field Name" Width="*"
+                                    Binding="{Binding FieldName}"
+                                    IsReadOnly="True"/>
+
+                <!-- Excel Column — dropdown from loaded headers, still editable for manual entry -->
+                <DataGridTemplateColumn Header="Excel Column" Width="160">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ExcelColumn}" Padding="4,2" FontFamily="Consolas"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <ComboBox IsEditable="True"
+                                      ItemsSource="{Binding DataContext.AvailableHeaders,
+                                                    RelativeSource={RelativeSource AncestorType=Window}}"
+                                      DisplayMemberPath="Letter"
+                                      Text="{Binding ExcelColumn, UpdateSourceTrigger=PropertyChanged}">
+                                <ComboBox.ItemContainerStyle>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Setter Property="ToolTip"  Value="{Binding Header}"/>
+                                        <Setter Property="Content"  Value="{Binding Display}"/>
+                                    </Style>
+                                </ComboBox.ItemContainerStyle>
+                            </ComboBox>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Test Value -->
                 <DataGridTextColumn Width="*"
                                     Binding="{Binding TestValue, UpdateSourceTrigger=PropertyChanged}">
                     <DataGridTextColumn.Header>
@@ -70,6 +90,7 @@
                                    ToolTip="Sample value shown in Print Preview when no live data is active"/>
                     </DataGridTextColumn.Header>
                 </DataGridTextColumn>
+
             </DataGrid.Columns>
         </DataGrid>
 
@@ -90,18 +111,32 @@
         </Grid>
 
         <!-- ── Print Qty column ── -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,14">
-            <TextBlock Text="Print Qty Column:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
-            <TextBox Text="{Binding PrintQtyColumn, UpdateSourceTrigger=PropertyChanged}"
-                     Width="50" Padding="4,3" FontFamily="Consolas"
-                     ToolTip="Column letter that contains how many labels to print per row (e.g.  M)"/>
-            <TextBlock Text=" — leave blank if every row prints 1 label"
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Print Qty Column:" VerticalAlignment="Center"
+                       Margin="0,0,8,0" FontWeight="SemiBold"/>
+            <ComboBox Grid.Column="1" IsEditable="True"
+                      ItemsSource="{Binding AvailableHeaders}"
+                      DisplayMemberPath="Letter"
+                      Text="{Binding PrintQtyColumn, UpdateSourceTrigger=PropertyChanged}"
+                      ToolTip="Column whose value = how many labels to print per row. Leave blank to always print 1.">
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="ToolTip"  Value="{Binding Header}"/>
+                        <Setter Property="Content"  Value="{Binding Display}"/>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+            </ComboBox>
+            <TextBlock Grid.Column="2" Text=" — leave blank to print 1 per row"
                        Foreground="#888" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
-        </StackPanel>
+        </Grid>
 
         <!-- Buttons -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Margin="0,0,0,0">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="OK" Width="80" IsDefault="True" Click="OK_Click"
                     Background="#2196F3" Foreground="White" FontWeight="SemiBold"/>

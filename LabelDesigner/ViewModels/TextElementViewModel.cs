@@ -17,6 +17,9 @@ public class TextElementViewModel : ElementViewModelBase
     private TextAlignmentOption _alignment = TextAlignmentOption.Left;
 
     public override ElementType ElementType => ElementType.Text;
+    public override string DisplayName =>
+        !string.IsNullOrEmpty(BoundField) ? $"Text [{BoundField}]"
+        : Text.Length > 18 ? $"Text \"{Text[..18]}…\"" : $"Text \"{Text}\"";
 
     public string Text { get => _text; set => Set(ref _text, value); }
     public string? BoundField { get => _boundField; set => Set(ref _boundField, value); }

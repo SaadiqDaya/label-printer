@@ -11,6 +11,9 @@ public class ImageElementViewModel : ElementViewModelBase
     private double _opacity = 1.0;
 
     public override ElementType ElementType => ElementType.Image;
+    public override string DisplayName =>
+        string.IsNullOrEmpty(ImagePath) ? "Image (empty)"
+        : $"Image — {System.IO.Path.GetFileName(ImagePath)}";
 
     public string ImagePath
     {

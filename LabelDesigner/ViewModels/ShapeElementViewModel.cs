@@ -12,6 +12,7 @@ public class ShapeElementViewModel : ElementViewModelBase
     private double _cornerRadius;
 
     public override ElementType ElementType => ElementType.Rectangle;
+    public override string DisplayName => $"Shape ({ShapeType})";
 
     public ShapeType ShapeType
     {

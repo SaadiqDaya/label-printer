@@ -16,8 +16,14 @@ public partial class PrintPreviewWindow : Window
     {
         if (DataContext is not PrintPreviewViewModel vm) return;
 
-        // Render preview at screen DPI
-        var preview = PrintService.RenderPreview(vm.Template, vm.Fields);
+        // Render at 2× screen DPI so barcodes and text are sharp
+        const double previewDpi = 192;
+        var preview = PrintService.RenderPreview(vm.Template, vm.Fields, previewDpi);
+
+        // Display at the label's 96-DPI WPF pixel size; Stretch.Fill maps the high-res
+        // bitmap into that space without layout inflation
+        PreviewImage.Width  = vm.Template.WidthPx;
+        PreviewImage.Height = vm.Template.HeightPx;
         PreviewImage.Source = preview;
 
         vm.CloseRequested += (_, _) => Close();

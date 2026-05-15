@@ -70,6 +70,12 @@ public partial class MainWindow : Window
             lb.SelectedItem = lbi.Content;
     }
 
+    private void ElementList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (((ListBox)sender).SelectedItem is ElementViewModelBase vm)
+            _vm.Designer.SelectElement(vm);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _ipc.Stop();

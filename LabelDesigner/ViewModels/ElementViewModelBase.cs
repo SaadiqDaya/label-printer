@@ -1,4 +1,5 @@
 using LabelDesigner.Core.Models;
+using System.Collections.ObjectModel;
 
 namespace LabelDesigner.ViewModels;
 
@@ -10,6 +11,12 @@ public abstract class ElementViewModelBase : ViewModelBase
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public abstract ElementType ElementType { get; }
+
+    /// <summary>Field names available for binding — populated by DesignerViewModel from the current template.</summary>
+    public ObservableCollection<string> AvailableFields { get; } = new() { "" };
+
+    /// <summary>Short label shown in the Element Explorer tab.</summary>
+    public virtual string DisplayName => ElementType.ToString();
 
     public double X { get => _x; set => Set(ref _x, value); }
     public double Y { get => _y; set => Set(ref _y, value); }

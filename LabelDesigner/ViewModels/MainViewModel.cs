@@ -83,6 +83,7 @@ public class MainViewModel : ViewModelBase
         if (dlg.ShowDialog() == true)
         {
             mvm.Apply();
+            Designer.SyncAvailableFields();
             StatusMessage = $"Fields updated — {Designer.Template.Fields.Count} field(s).";
             if (Designer.CurrentFilePath != null)
             {

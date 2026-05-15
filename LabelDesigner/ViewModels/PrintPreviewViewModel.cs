@@ -11,6 +11,7 @@ public class PrintPreviewViewModel : ViewModelBase
     private string _selectedPrinter;
     private bool _useDataQty;
     private int _manualQty = 1;
+    private double _previewZoom = 1.0;
 
     public Dictionary<string, string> Fields { get; }
     public LabelTemplate Template => _template;
@@ -55,6 +56,19 @@ public class PrintPreviewViewModel : ViewModelBase
     }
 
     public int EffectiveQty => UseDataQty ? DataQty : ManualQty;
+
+    // ─── Preview zoom ─────────────────────────────────────────────────────────
+    public double PreviewZoom
+    {
+        get => _previewZoom;
+        set { Set(ref _previewZoom, Math.Clamp(Math.Round(value, 2), 0.25, 4.0)); OnPropertyChanged(nameof(PreviewZoomLabel)); }
+    }
+
+    public string PreviewZoomLabel => $"{(int)(_previewZoom * 100)}%";
+
+    public ICommand ZoomInCommand    => new RelayCommand(() => PreviewZoom *= 1.25, () => _previewZoom < 4.0);
+    public ICommand ZoomOutCommand   => new RelayCommand(() => PreviewZoom /= 1.25, () => _previewZoom > 0.26);
+    public ICommand ZoomResetCommand => new RelayCommand(() => PreviewZoom = 1.0);
 
     // ─── Commands ────────────────────────────────────────────────────────────
     public ICommand PrintCommand => new RelayCommand(PrintDirect);
