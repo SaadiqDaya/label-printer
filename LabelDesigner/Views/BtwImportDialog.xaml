@@ -1,0 +1,115 @@
+<Window x:Class="LabelDesigner.Views.BtwImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Import from BarTender" Width="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+
+    <StackPanel Margin="18">
+
+        <!-- Header -->
+        <TextBlock Text="Import from BarTender (.btw)"
+                   FontSize="15" FontWeight="Bold" Margin="0,0,0,4"/>
+        <TextBlock x:Name="FileNameBlock" Foreground="#555" FontSize="11"
+                   TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+        <!-- What was read from the file -->
+        <Border Background="#F0F4FF" BorderBrush="#B0BEF0" BorderThickness="1"
+                CornerRadius="4" Padding="12" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Read from file:" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Label size:"
+                               Foreground="#555" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="SizeBlock" Grid.Row="0" Grid.Column="1"
+                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Suggested name:"
+                               Foreground="#555" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                    <TextBlock x:Name="TitleBlock" Grid.Row="1" Grid.Column="1"
+                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,6,0,0"
+                               TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Printer in file:"
+                               Foreground="#555" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                    <TextBlock x:Name="PrinterBlock" Grid.Row="2" Grid.Column="1"
+                               Foreground="#666" FontSize="11" VerticalAlignment="Center"
+                               Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Editable template name + dimensions -->
+        <TextBlock Text="Template name" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox x:Name="NameBox" Padding="5,4" Margin="0,0,0,12"/>
+
+        <TextBlock Text="Canvas size (mm)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Width (mm)" Foreground="#555" FontSize="11" Margin="0,0,0,2"/>
+                <TextBox x:Name="WidthBox" Padding="5,4"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Height (mm)" Foreground="#555" FontSize="11" Margin="0,0,0,2"/>
+                <TextBox x:Name="HeightBox" Padding="5,4"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- What WILL be imported -->
+        <Border Background="#F0FFF4" BorderBrush="#88C8A0" BorderThickness="1"
+                CornerRadius="4" Padding="12" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="✔  What will be created" FontWeight="SemiBold"
+                           Foreground="#2E7D32" Margin="0,0,0,6"/>
+                <TextBlock Foreground="#2E7D32" FontSize="12">
+                    • Blank canvas sized to the label dimensions above&#x0a;
+                    • Template saved to your Templates folder, ready to design
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- What CANNOT be imported -->
+        <Border Background="#FFF5F5" BorderBrush="#F0A0A0" BorderThickness="1"
+                CornerRadius="4" Padding="12" Margin="0,0,0,18">
+            <StackPanel>
+                <TextBlock Text="✘  What cannot be imported" FontWeight="SemiBold"
+                           Foreground="#C62828" Margin="0,0,0,6"/>
+                <TextBlock Foreground="#B71C1C" FontSize="12" TextWrapping="Wrap">
+                    • Element layout — text boxes, barcodes, images, shapes&#x0a;
+                    • Fonts, colours, and styling&#x0a;
+                    • Field names and data bindings&#x0a;
+                    • Database connections&#x0a;&#x0a;
+                    <Run FontStyle="Italic" Foreground="#888">
+BarTender stores all design data in a proprietary binary format.
+You will need to recreate your elements on the blank canvas.
+                    </Run>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="80" Margin="0,0,10,0" IsCancel="True" Padding="0,5"/>
+            <Button x:Name="CreateBtn" Content="Create Blank Template"
+                    Width="160" IsDefault="True" Padding="0,5"
+                    Background="#1976D2" Foreground="White" FontWeight="SemiBold"
+                    Click="Create_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

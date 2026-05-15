@@ -1,0 +1,87 @@
+<Window x:Class="LabelDesigner.Views.NewTemplateDlg"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="New Template" Width="380" Height="480"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+    <StackPanel Margin="16">
+
+        <!-- Name -->
+        <TextBlock Text="Template Name" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox x:Name="NameBox" Text="New Template" Padding="4" Margin="0,0,0,12"/>
+
+        <!-- Size -->
+        <TextBlock Text="Label Size" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Width (mm)" Foreground="#555" FontSize="11" Margin="0,0,0,2"/>
+                <TextBox x:Name="WidthBox" Text="50.8" Padding="4"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Height (mm)" Foreground="#555" FontSize="11" Margin="0,0,0,2"/>
+                <TextBox x:Name="HeightBox" Text="25.4" Padding="4"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Text="Common sizes:" Foreground="#777" FontSize="11" Margin="0,0,0,4"/>
+        <WrapPanel Margin="0,0,0,14">
+            <Button Content="2×1 in" Padding="6,2" Margin="0,0,4,4" Click="Preset_Click" Tag="50.8,25.4" ToolTip="2 inch × 1 inch"/>
+            <Button Content="4×2 in" Padding="6,2" Margin="0,0,4,4" Click="Preset_Click" Tag="101.6,50.8"/>
+            <Button Content="3×1 in" Padding="6,2" Margin="0,0,4,4" Click="Preset_Click" Tag="76.2,25.4"/>
+            <Button Content="4×6 in" Padding="6,2" Margin="0,0,4,4" Click="Preset_Click" Tag="101.6,152.4"/>
+            <Button Content="100×50" Padding="6,2" Margin="0,0,4,4" Click="Preset_Click" Tag="100,50"/>
+        </WrapPanel>
+
+        <!-- Fields -->
+        <TextBlock FontWeight="SemiBold" Margin="0,0,0,4">
+            Fields
+            <Run Foreground="#888" FontSize="11" FontWeight="Normal"> — data placeholders this template will use</Run>
+        </TextBlock>
+        <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid>
+                <TextBox x:Name="NewFieldBox" Padding="4" KeyDown="NewFieldBox_KeyDown"/>
+                <TextBlock Text="e.g. itemName" Foreground="#AAA" IsHitTestVisible="False"
+                           Margin="6,0,0,0" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=NewFieldBox}" Value="">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+            <Button Grid.Column="1" Content="+ Add" Padding="8,4" Margin="4,0,0,0"
+                    Click="AddField_Click"/>
+        </Grid>
+        <ListBox x:Name="FieldsList" Height="110" Margin="0,0,0,4"
+                 SelectionMode="Single">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Content="Remove Selected" HorizontalAlignment="Left" Padding="8,3"
+                Click="RemoveField_Click" Foreground="#C00"/>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Cancel" Width="70" Margin="0,0,8,0" IsCancel="True"/>
+            <Button Content="Create" Width="70" IsDefault="True" Click="Create_Click"
+                    Background="#2196F3" Foreground="White"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

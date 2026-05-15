@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LabelDesigner.Core/LabelDesigner.Core.csproj" />
+  <Project Path="LabelDesigner/LabelDesigner.csproj" />
+</Solution>

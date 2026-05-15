@@ -1,0 +1,181 @@
+<UserControl x:Class="LabelDesigner.Views.PropertiesPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:LabelDesigner.ViewModels"
+             xmlns:conv="clr-namespace:LabelDesigner.Converters"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="230">
+
+    <UserControl.Resources>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="0,2,0,4" />
+            <Setter Property="Padding" Value="3,2" />
+        </Style>
+        <Style TargetType="TextBlock" x:Key="Label">
+            <Setter Property="Foreground" Value="#555" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,4,0,1" />
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="6">
+
+            <!-- No selection message -->
+            <TextBlock Text="No element selected."
+                       Foreground="#999" FontStyle="Italic" Margin="4,8"
+                       Visibility="{Binding Converter={StaticResource NullToVisibility},
+                                    ConverterParameter=inverse}"
+                       HorizontalAlignment="Center" />
+
+            <!-- Common position/size properties -->
+            <GroupBox Header="Position &amp; Size"
+                      Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="X" Style="{StaticResource Label}" Grid.Row="0" Grid.Column="0"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding X, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="Y" Style="{StaticResource Label}" Grid.Row="0" Grid.Column="2"/>
+                    <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding Y, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="W" Style="{StaticResource Label}" Grid.Row="1" Grid.Column="0"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Width, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="H" Style="{StaticResource Label}" Grid.Row="1" Grid.Column="2"/>
+                    <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding Height, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="Z" Style="{StaticResource Label}" Grid.Row="2" Grid.Column="0"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ZIndex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </GroupBox>
+
+            <!-- Type-specific properties via DataTemplates -->
+            <ContentControl Content="{Binding}"
+                            Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <ContentControl.Resources>
+
+                    <!-- ── Text element properties ── -->
+                    <DataTemplate DataType="{x:Type vm:TextElementViewModel}">
+                        <StackPanel>
+                            <GroupBox Header="Text">
+                                <StackPanel>
+                                    <TextBlock Text="Content" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Field name from JaneERP data (e.g. flavor, batchNumber)" />
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Font">
+                                <StackPanel>
+                                    <TextBlock Text="Family" Style="{StaticResource Label}"/>
+                                    <ComboBox Text="{Binding FontFamily, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEditable="True"
+                                              ItemsSource="{Binding Source={x:Static Fonts.SystemFontFamilies}}"
+                                              DisplayMemberPath="Source" />
+
+                                    <TextBlock Text="Size" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding FontSize, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <CheckBox Content="Bold"      IsChecked="{Binding Bold}"      Margin="0,0,10,0"/>
+                                        <CheckBox Content="Italic"    IsChecked="{Binding Italic}"    Margin="0,0,10,0"/>
+                                        <CheckBox Content="Underline" IsChecked="{Binding Underline}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="Color (hex or name)" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <TextBlock Text="Alignment" Style="{StaticResource Label}"/>
+                                    <ComboBox SelectedItem="{Binding Alignment}"
+                                              ItemsSource="{Binding Source={x:Static vm:AlignmentOptions.All}}" />
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </DataTemplate>
+
+                    <!-- ── Barcode element properties ── -->
+                    <DataTemplate DataType="{x:Type vm:BarcodeElementViewModel}">
+                        <GroupBox Header="Barcode">
+                            <StackPanel>
+                                <TextBlock Text="Value (preview)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding BarcodeValue, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Field name from JaneERP data (e.g. barcode)" />
+
+                                <TextBlock Text="Format" Style="{StaticResource Label}"/>
+                                <ComboBox SelectedItem="{Binding Format}"
+                                          ItemsSource="{Binding Source={x:Static vm:BarcodeFormatOptions.All}}" />
+
+                                <CheckBox Content="Show Text Below" IsChecked="{Binding ShowText}" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </DataTemplate>
+
+                    <!-- ── Image element properties ── -->
+                    <DataTemplate DataType="{x:Type vm:ImageElementViewModel}">
+                        <GroupBox Header="Image">
+                            <StackPanel>
+                                <TextBlock Text="Image Path" Style="{StaticResource Label}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="1" Content="..." Width="26" Margin="2,2,0,4"
+                                            Click="BrowseImage_Click"/>
+                                </Grid>
+                                <CheckBox Content="Maintain Aspect Ratio" IsChecked="{Binding MaintainAspectRatio}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Opacity" Style="{StaticResource Label}"/>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </DataTemplate>
+
+                    <!-- ── Shape element properties ── -->
+                    <DataTemplate DataType="{x:Type vm:ShapeElementViewModel}">
+                        <GroupBox Header="Shape">
+                            <StackPanel>
+                                <TextBlock Text="Type" Style="{StaticResource Label}"/>
+                                <ComboBox SelectedItem="{Binding ShapeType}"
+                                          ItemsSource="{Binding Source={x:Static vm:ShapeTypeOptions.All}}" />
+
+                                <TextBlock Text="Fill Color" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding FillColor, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Text="Stroke Color" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding StrokeColor, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Text="Stroke Thickness" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding StrokeThickness, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Text="Corner Radius" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding CornerRadius, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </GroupBox>
+                    </DataTemplate>
+
+                </ContentControl.Resources>
+            </ContentControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# NuGet
+*.nupkg
+packages/
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# User-specific
+*.rsuser
+*.userprefs
