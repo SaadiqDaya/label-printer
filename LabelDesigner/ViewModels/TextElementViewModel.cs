@@ -83,6 +83,7 @@ public class TextElementViewModel : ElementViewModelBase
     public override LabelElement ToModel() => new TextElement
     {
         Id = Id, X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         Text = Text, BoundField = BoundField, FontFamily = FontFamily,
         FontSize = FontSize, Bold = Bold, Italic = Italic, Underline = Underline,
         Color = Color, Alignment = Alignment
@@ -92,6 +93,7 @@ public class TextElementViewModel : ElementViewModelBase
     {
         var m = (TextElement)element;
         Id = m.Id; X = m.X; Y = m.Y; Width = m.Width; Height = m.Height; ZIndex = m.ZIndex;
+        PrintCondition = m.PrintCondition;
         Text = m.Text; BoundField = m.BoundField; FontFamily = m.FontFamily;
         FontSize = m.FontSize; Bold = m.Bold; Italic = m.Italic; Underline = m.Underline;
         Color = m.Color; Alignment = m.Alignment;

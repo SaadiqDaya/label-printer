@@ -13,6 +13,7 @@ public class BarcodeElement : LabelElement
     public override LabelElement Clone() => new BarcodeElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         BarcodeValue = BarcodeValue, BoundField = BoundField, Format = Format, ShowText = ShowText
     };
 }

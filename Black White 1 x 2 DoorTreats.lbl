@@ -1,0 +1,35 @@
+{
+  "Id": "ddca2eb9-69f8-4e83-a09a-87e4d852086f",
+  "Name": "Black White 1 x 2 DoorTreats",
+  "WidthMm": 50.4,
+  "HeightMm": 25.4,
+  "BackgroundColor": "#FFFFFF",
+  "Fields": [
+    "Name"
+  ],
+  "ExcelColumnMapping": {},
+  "PrintQtyColumn": null,
+  "DefaultExcelPath": "E:\\Onedrive - Jvnction\\Documents - VanGo Production\\Production Tools\\VanGo HQ\\DoorTreats Labels.xlsx",
+  "TestData": {},
+  "Elements": [
+    {
+      "$type": "Text",
+      "Text": "Text",
+      "BoundField": null,
+      "FontFamily": "Arial",
+      "FontSize": 12,
+      "Bold": false,
+      "Italic": false,
+      "Underline": false,
+      "Color": "#000000",
+      "Alignment": "Left",
+      "Type": "Text",
+      "Id": "2e006692-6b95-4de0-be7e-4570676db8a1",
+      "X": 10,
+      "Y": 10,
+      "Width": 80,
+      "Height": 20,
+      "ZIndex": 0
+    }
+  ]
+}

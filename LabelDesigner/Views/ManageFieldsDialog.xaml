@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:LabelDesigner.Converters"
         Title="Manage Fields &amp; Excel Mapping"
-        Width="600" Height="580"
+        Width="620" Height="820"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize" ShowInTaskbar="False">
+        ResizeMode="CanResize" ShowInTaskbar="False"
+        MinHeight="640" MinWidth="580">
 
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
@@ -136,11 +137,127 @@
         </Grid>
 
         <!-- Buttons -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
             <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="OK" Width="80" IsDefault="True" Click="OK_Click"
                     Background="#2196F3" Foreground="White" FontWeight="SemiBold"/>
         </StackPanel>
+
+        <!-- ── Secondary Excel File (join / lookup) ── -->
+        <GroupBox DockPanel.Dock="Top" Margin="0,4,0,10" Padding="6"
+                  Header="Secondary Excel File (optional join / lookup)">
+            <StackPanel>
+
+                <!-- Path + browse -->
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding SecondaryExcelPath}" IsReadOnly="True" Padding="4,3"
+                             ToolTip="A second spreadsheet used as a lookup table (e.g. product catalogue)"/>
+                    <Button Grid.Column="1" Content="Browse…" Padding="8,3" Margin="4,0,4,0"
+                            Command="{Binding BrowseSecondaryExcelCommand}"/>
+                    <Button Grid.Column="2" Content="Auto Map" Padding="8,3" FontWeight="SemiBold"
+                            Background="#E3F2FD" Command="{Binding AutoMapSecondaryCommand}"
+                            ToolTip="Match secondary field names to column headers automatically"/>
+                </Grid>
+
+                <!-- Join keys -->
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Join — primary col:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Grid.Column="1" IsEditable="True"
+                              ItemsSource="{Binding AvailableHeaders}"
+                              DisplayMemberPath="Letter"
+                              Text="{Binding JoinPrimaryKeyColumn, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="Column in the PRIMARY file that contains the shared key (e.g. SKU)">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="ToolTip" Value="{Binding Header}"/>
+                                <Setter Property="Content" Value="{Binding Display}"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <TextBlock Grid.Column="2" Text=" = secondary col:" VerticalAlignment="Center" Margin="6,0"/>
+                    <ComboBox Grid.Column="3" IsEditable="True"
+                              ItemsSource="{Binding SecondaryAvailableHeaders}"
+                              DisplayMemberPath="Letter"
+                              Text="{Binding JoinSecondaryKeyColumn, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="Column in the SECONDARY file that contains the matching key">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="ToolTip" Value="{Binding Header}"/>
+                                <Setter Property="Content" Value="{Binding Display}"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                </Grid>
+
+                <!-- Secondary field → column DataGrid -->
+                <DataGrid Height="130" Margin="0,0,0,4"
+                          ItemsSource="{Binding SecondaryMappings}"
+                          SelectedItem="{Binding SelectedSecondaryMapping}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          SelectionMode="Single"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Field Name" Width="*"
+                                            Binding="{Binding FieldName}"
+                                            IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Secondary Column" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ExcelColumn}" Padding="4,2" FontFamily="Consolas"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox IsEditable="True"
+                                              ItemsSource="{Binding DataContext.SecondaryAvailableHeaders,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                              DisplayMemberPath="Letter"
+                                              Text="{Binding ExcelColumn, UpdateSourceTrigger=PropertyChanged}">
+                                        <ComboBox.ItemContainerStyle>
+                                            <Style TargetType="ComboBoxItem">
+                                                <Setter Property="ToolTip" Value="{Binding Header}"/>
+                                                <Setter Property="Content" Value="{Binding Display}"/>
+                                            </Style>
+                                        </ComboBox.ItemContainerStyle>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Add / remove secondary field row -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding NewSecondaryFieldName, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="4,3" ToolTip="Field name to read from the secondary file"/>
+                    <Button Grid.Column="1" Content="+ Add" Padding="8,3" Margin="4,0,4,0"
+                            Command="{Binding AddSecondaryFieldCommand}"/>
+                    <Button Grid.Column="2" Content="Remove Selected" Padding="8,3"
+                            Foreground="#C00" Command="{Binding RemoveSecondaryFieldCommand}"/>
+                </Grid>
+
+            </StackPanel>
+        </GroupBox>
 
     </DockPanel>
 </Window>

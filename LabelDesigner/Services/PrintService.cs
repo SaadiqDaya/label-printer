@@ -59,6 +59,8 @@ public static class PrintService
 
         foreach (var element in template.Elements.OrderBy(e => e.ZIndex))
         {
+            if (!ConditionEvaluator.Evaluate(element.PrintCondition, fields)) continue;
+
             UIElement? ui = element switch
             {
                 TextElement te => BuildText(te, fields),

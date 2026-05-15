@@ -56,6 +56,7 @@ public class ShapeElementViewModel : ElementViewModelBase
     public override LabelElement ToModel() => new ShapeElement
     {
         Id = Id, X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         ShapeType = ShapeType, FillColor = FillColor, StrokeColor = StrokeColor,
         StrokeThickness = StrokeThickness, CornerRadius = CornerRadius
     };
@@ -64,6 +65,7 @@ public class ShapeElementViewModel : ElementViewModelBase
     {
         var m = (ShapeElement)element;
         Id = m.Id; X = m.X; Y = m.Y; Width = m.Width; Height = m.Height; ZIndex = m.ZIndex;
+        PrintCondition = m.PrintCondition;
         ShapeType = m.ShapeType; FillColor = m.FillColor; StrokeColor = m.StrokeColor;
         StrokeThickness = m.StrokeThickness; CornerRadius = m.CornerRadius;
     }

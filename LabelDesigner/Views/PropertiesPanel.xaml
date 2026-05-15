@@ -63,6 +63,18 @@
                 </Grid>
             </GroupBox>
 
+            <!-- Print condition -->
+            <GroupBox Header="Print Condition"
+                      Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Label}" Text="Show element only when:" />
+                    <TextBox Text="{Binding PrintCondition, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{}{Field} == &quot;value&quot;   or   {Field} != &quot;value&quot;&#x0a;{Field} &gt; 0   (also &gt;=, &lt;, &lt;=)&#x0a;{Field}   — non-empty (truthy)&#x0a;!{Field}  — empty (falsy)&#x0a;Leave blank to always print." />
+                    <TextBlock Text="{}{Field} == &quot;val&quot; | {Field} &gt; 0 | {Field} | !{Field}"
+                               FontSize="9" Foreground="#999" FontStyle="Italic" Margin="0,2,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
             <!-- Type-specific properties via DataTemplates -->
             <ContentControl Content="{Binding}"
                             Visibility="{Binding Converter={StaticResource NullToVisibility}}">

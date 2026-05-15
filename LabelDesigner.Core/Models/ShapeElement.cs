@@ -18,6 +18,7 @@ public class ShapeElement : LabelElement
     public override LabelElement Clone() => new ShapeElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         ShapeType = ShapeType, FillColor = FillColor, StrokeColor = StrokeColor,
         StrokeThickness = StrokeThickness, CornerRadius = CornerRadius
     };

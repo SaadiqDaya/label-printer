@@ -11,6 +11,7 @@ public class ImageElement : LabelElement
     public override LabelElement Clone() => new ImageElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         ImagePath = ImagePath, MaintainAspectRatio = MaintainAspectRatio, Opacity = Opacity
     };
 }

@@ -15,6 +15,12 @@ public abstract class LabelElement
     public double Height { get; set; } = 20;
     public int ZIndex { get; set; }
 
+    /// <summary>
+    /// Optional print condition. Element is skipped when this evaluates to false.
+    /// Syntax: {Field} == "value" | {Field} != "value" | {Field} &gt; 0 | {Field} (non-empty) | !{Field} (empty)
+    /// </summary>
+    public string? PrintCondition { get; set; }
+
     [JsonIgnore]
     public abstract ElementType Type { get; }
 

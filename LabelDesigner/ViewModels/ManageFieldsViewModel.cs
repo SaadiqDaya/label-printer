@@ -47,10 +47,20 @@ public class ManageFieldsViewModel : ViewModelBase
     private string _newFieldName = "";
     private FieldMappingItem? _selectedMapping;
 
+    // ── Secondary file fields ────────────────────────────────────────────────
+    private string _secondaryExcelPath;
+    private string _joinPrimaryKeyColumn;
+    private string _joinSecondaryKeyColumn;
+    private string _newSecondaryFieldName = "";
+    private FieldMappingItem? _selectedSecondaryMapping;
+
     public string TemplateName => _template.Name;
 
     public ObservableCollection<FieldMappingItem>  Mappings        { get; } = new();
     public ObservableCollection<ColumnHeaderItem>  AvailableHeaders { get; } = new();
+
+    public ObservableCollection<FieldMappingItem>  SecondaryMappings        { get; } = new();
+    public ObservableCollection<ColumnHeaderItem>  SecondaryAvailableHeaders { get; } = new();
 
     public string ExcelPath
     {
@@ -78,18 +88,59 @@ public class ManageFieldsViewModel : ViewModelBase
 
     public bool HasHeaders => AvailableHeaders.Any();
 
-    public ICommand BrowseExcelCommand  => new RelayCommand(BrowseExcel);
-    public ICommand AddFieldCommand     => new RelayCommand(AddField, () => !string.IsNullOrWhiteSpace(NewFieldName));
-    public ICommand RemoveFieldCommand  => new RelayCommand(RemoveSelected, () => SelectedMapping != null);
-    public ICommand AutoMapCommand      => new RelayCommand(AutoMap, () => AvailableHeaders.Any() && Mappings.Any());
+    // ── Secondary file properties ────────────────────────────────────────────
+    public string SecondaryExcelPath
+    {
+        get => _secondaryExcelPath;
+        set { Set(ref _secondaryExcelPath, value); LoadSecondaryHeaders(); }
+    }
+
+    public string JoinPrimaryKeyColumn
+    {
+        get => _joinPrimaryKeyColumn;
+        set => Set(ref _joinPrimaryKeyColumn, value);
+    }
+
+    public string JoinSecondaryKeyColumn
+    {
+        get => _joinSecondaryKeyColumn;
+        set => Set(ref _joinSecondaryKeyColumn, value);
+    }
+
+    public string NewSecondaryFieldName
+    {
+        get => _newSecondaryFieldName;
+        set => Set(ref _newSecondaryFieldName, value);
+    }
+
+    public FieldMappingItem? SelectedSecondaryMapping
+    {
+        get => _selectedSecondaryMapping;
+        set => Set(ref _selectedSecondaryMapping, value);
+    }
+
+    public bool HasSecondaryHeaders => SecondaryAvailableHeaders.Any();
+
+    public ICommand BrowseExcelCommand         => new RelayCommand(BrowseExcel);
+    public ICommand AddFieldCommand            => new RelayCommand(AddField, () => !string.IsNullOrWhiteSpace(NewFieldName));
+    public ICommand RemoveFieldCommand         => new RelayCommand(RemoveSelected, () => SelectedMapping != null);
+    public ICommand AutoMapCommand             => new RelayCommand(AutoMap, () => AvailableHeaders.Any() && Mappings.Any());
+
+    public ICommand BrowseSecondaryExcelCommand  => new RelayCommand(BrowseSecondaryExcel);
+    public ICommand AutoMapSecondaryCommand      => new RelayCommand(AutoMapSecondary, () => SecondaryAvailableHeaders.Any() && SecondaryMappings.Any());
+    public ICommand AddSecondaryFieldCommand     => new RelayCommand(AddSecondaryField, () => !string.IsNullOrWhiteSpace(NewSecondaryFieldName));
+    public ICommand RemoveSecondaryFieldCommand  => new RelayCommand(RemoveSecondarySelected, () => SelectedSecondaryMapping != null);
 
     public ManageFieldsViewModel(LabelTemplate template)
     {
-        _template        = template;
-        _excelPath       = template.DefaultExcelPath ?? "";
-        _printQtyColumn  = template.PrintQtyColumn   ?? "";
+        _template              = template;
+        _excelPath             = template.DefaultExcelPath       ?? "";
+        _printQtyColumn        = template.PrintQtyColumn         ?? "";
+        _secondaryExcelPath    = template.SecondaryExcelPath     ?? "";
+        _joinPrimaryKeyColumn  = template.JoinPrimaryKeyColumn   ?? "";
+        _joinSecondaryKeyColumn= template.JoinSecondaryKeyColumn ?? "";
 
-        // Seed grid from existing fields (maintain declaration order)
+        // Seed primary grid from existing fields (maintain declaration order)
         foreach (var field in template.Fields)
         {
             var col  = template.ExcelColumnMapping.TryGetValue(field, out var c) ? c : "";
@@ -107,8 +158,15 @@ public class ManageFieldsViewModel : ViewModelBase
             }
         }
 
+        // Seed secondary grid
+        foreach (var kv in template.SecondaryExcelColumnMapping)
+            SecondaryMappings.Add(new FieldMappingItem(kv.Key, kv.Value));
+
         if (!string.IsNullOrEmpty(_excelPath))
             LoadHeaders();
+
+        if (!string.IsNullOrEmpty(_secondaryExcelPath))
+            LoadSecondaryHeaders();
     }
 
     private void BrowseExcel()
@@ -116,10 +174,21 @@ public class ManageFieldsViewModel : ViewModelBase
         var dlg = new OpenFileDialog
         {
             Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-            Title  = "Select Excel Data File for this Template"
+            Title  = "Select Primary Excel Data File for this Template"
         };
         if (dlg.ShowDialog() != true) return;
         ExcelPath = dlg.FileName;
+    }
+
+    private void BrowseSecondaryExcel()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
+            Title  = "Select Secondary / Lookup Excel File"
+        };
+        if (dlg.ShowDialog() != true) return;
+        SecondaryExcelPath = dlg.FileName;
     }
 
     private void LoadHeaders()
@@ -137,8 +206,25 @@ public class ManageFieldsViewModel : ViewModelBase
                 AvailableHeaders.Add(new ColumnHeaderItem(h.Letter, h.Header));
         }
         catch { /* leave empty */ }
-
         OnPropertyChanged(nameof(HasHeaders));
+    }
+
+    private void LoadSecondaryHeaders()
+    {
+        SecondaryAvailableHeaders.Clear();
+        if (!File.Exists(_secondaryExcelPath))
+        {
+            OnPropertyChanged(nameof(HasSecondaryHeaders));
+            return;
+        }
+        try
+        {
+            var headers = ExcelImportService.ReadHeaders(_secondaryExcelPath);
+            foreach (var h in headers)
+                SecondaryAvailableHeaders.Add(new ColumnHeaderItem(h.Letter, h.Header));
+        }
+        catch { /* leave empty */ }
+        OnPropertyChanged(nameof(HasSecondaryHeaders));
     }
 
     /// <summary>
@@ -183,6 +269,32 @@ public class ManageFieldsViewModel : ViewModelBase
             Mappings.Remove(SelectedMapping);
     }
 
+    private void AutoMapSecondary()
+    {
+        foreach (var mapping in SecondaryMappings)
+        {
+            var match = SecondaryAvailableHeaders.FirstOrDefault(h =>
+                string.Equals(h.Header, mapping.FieldName, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                mapping.ExcelColumn = match.Letter;
+        }
+    }
+
+    private void AddSecondaryField()
+    {
+        var name = new string(NewSecondaryFieldName.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+        if (string.IsNullOrEmpty(name)) return;
+        if (SecondaryMappings.Any(m => m.FieldName == name)) return;
+        SecondaryMappings.Add(new FieldMappingItem(name, ""));
+        NewSecondaryFieldName = "";
+    }
+
+    private void RemoveSecondarySelected()
+    {
+        if (SelectedSecondaryMapping != null)
+            SecondaryMappings.Remove(SelectedSecondaryMapping);
+    }
+
     /// <summary>
     /// Write the edited mappings back to the template.
     /// Call this only when the dialog is confirmed (DialogResult = true).
@@ -208,5 +320,21 @@ public class ManageFieldsViewModel : ViewModelBase
 
         _template.DefaultExcelPath =
             string.IsNullOrWhiteSpace(ExcelPath) ? null : ExcelPath.Trim();
+
+        // Secondary file / join
+        _template.SecondaryExcelPath =
+            string.IsNullOrWhiteSpace(SecondaryExcelPath) ? null : SecondaryExcelPath.Trim();
+
+        _template.JoinPrimaryKeyColumn =
+            string.IsNullOrWhiteSpace(JoinPrimaryKeyColumn) ? null : JoinPrimaryKeyColumn.Trim().ToUpper();
+
+        _template.JoinSecondaryKeyColumn =
+            string.IsNullOrWhiteSpace(JoinSecondaryKeyColumn) ? null : JoinSecondaryKeyColumn.Trim().ToUpper();
+
+        _template.SecondaryExcelColumnMapping = SecondaryMappings
+            .Where(m => !string.IsNullOrWhiteSpace(m.ExcelColumn))
+            .ToDictionary(
+                m => m.FieldName,
+                m => m.ExcelColumn.Trim().ToUpper());
     }
 }

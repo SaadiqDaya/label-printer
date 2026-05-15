@@ -8,6 +8,7 @@ public abstract class ElementViewModelBase : ViewModelBase
     private double _x, _y, _width = 80, _height = 20;
     private bool _isSelected;
     private int _zIndex;
+    private string? _printCondition;
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public abstract ElementType ElementType { get; }
@@ -17,6 +18,9 @@ public abstract class ElementViewModelBase : ViewModelBase
 
     /// <summary>Short label shown in the Element Explorer tab.</summary>
     public virtual string DisplayName => ElementType.ToString();
+
+    /// <summary>Optional expression that controls whether this element is printed. Empty = always print.</summary>
+    public string? PrintCondition { get => _printCondition; set => Set(ref _printCondition, value); }
 
     public double X { get => _x; set => Set(ref _x, value); }
     public double Y { get => _y; set => Set(ref _y, value); }

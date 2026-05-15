@@ -46,6 +46,7 @@ public class BarcodeElementViewModel : ElementViewModelBase
     public override LabelElement ToModel() => new BarcodeElement
     {
         Id = Id, X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         BarcodeValue = BarcodeValue, BoundField = BoundField, Format = Format, ShowText = ShowText
     };
 
@@ -53,6 +54,7 @@ public class BarcodeElementViewModel : ElementViewModelBase
     {
         var m = (BarcodeElement)element;
         Id = m.Id; X = m.X; Y = m.Y; Width = m.Width; Height = m.Height; ZIndex = m.ZIndex;
+        PrintCondition = m.PrintCondition;
         BarcodeValue = m.BarcodeValue; BoundField = m.BoundField; Format = m.Format; ShowText = m.ShowText;
     }
 }

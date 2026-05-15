@@ -46,6 +46,7 @@ public class ImageElementViewModel : ElementViewModelBase
     public override LabelElement ToModel() => new ImageElement
     {
         Id = Id, X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
+        PrintCondition = PrintCondition,
         ImagePath = ImagePath, MaintainAspectRatio = MaintainAspectRatio, Opacity = Opacity
     };
 
@@ -53,6 +54,7 @@ public class ImageElementViewModel : ElementViewModelBase
     {
         var m = (ImageElement)element;
         Id = m.Id; X = m.X; Y = m.Y; Width = m.Width; Height = m.Height; ZIndex = m.ZIndex;
+        PrintCondition = m.PrintCondition;
         ImagePath = m.ImagePath; MaintainAspectRatio = m.MaintainAspectRatio; Opacity = m.Opacity;
     }
 }

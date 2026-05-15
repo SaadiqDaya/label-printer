@@ -31,6 +31,19 @@ public class LabelTemplate
     /// <summary>Last Excel file used with this template — pre-filled in the import dialog.</summary>
     public string? DefaultExcelPath { get; set; }
 
+    // ── Secondary Excel join ──────────────────────────────────────────────────
+    /// <summary>Optional second spreadsheet used as a lookup table.</summary>
+    public string? SecondaryExcelPath { get; set; }
+
+    /// <summary>Column letter in the PRIMARY file that is the join key (e.g. "A").</summary>
+    public string? JoinPrimaryKeyColumn { get; set; }
+
+    /// <summary>Column letter in the SECONDARY file that is the join key (e.g. "A").</summary>
+    public string? JoinSecondaryKeyColumn { get; set; }
+
+    /// <summary>Maps template field names to column letters in the secondary file.</summary>
+    public Dictionary<string, string> SecondaryExcelColumnMapping { get; set; } = new();
+
     /// <summary>
     /// Sample values for each field, shown in preview when no live data source is active.
     /// Edited via the Manage Fields dialog.
