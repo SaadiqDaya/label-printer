@@ -29,8 +29,27 @@
                           IsEditable="True"/>
             </Grid>
 
-            <!-- Quantity -->
-            <StackPanel Margin="0,0,0,10">
+            <!-- Print scope: this record vs. all loaded records -->
+            <StackPanel Margin="0,0,0,10"
+                        Visibility="{Binding HasAllRecords, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Scope:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <RadioButton IsChecked="{Binding PrintAllRecords}" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Print all records ("/>
+                        <TextBlock Text="{Binding AllRecordsCount}" FontWeight="Bold"/>
+                        <TextBlock Text=" rows = "/>
+                        <TextBlock Text="{Binding AllRecordsTotalLabels}" FontWeight="Bold"/>
+                        <TextBlock Text=" labels)"/>
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton IsChecked="{Binding PrintAllRecords, Converter={StaticResource InverseBool}}">
+                    <TextBlock Text="Print this record only"/>
+                </RadioButton>
+            </StackPanel>
+
+            <!-- Quantity (disabled when 'Print all records' is selected) -->
+            <StackPanel Margin="0,0,0,10"
+                        IsEnabled="{Binding PrintAllRecords, Converter={StaticResource InverseBool}}">
                 <TextBlock Text="Quantity:" FontWeight="SemiBold" Margin="0,0,0,4"/>
 
                 <!-- Row 1: from-data option (shown only when a data qty was supplied) -->
@@ -58,8 +77,8 @@
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
-                <Button Content="{Binding EffectiveQty, StringFormat='Print ×{0}'}"
-                        Width="90" IsDefault="True"
+                <Button Content="{Binding PrintButtonLabel}"
+                        MinWidth="160" IsDefault="True"
                         Command="{Binding PrintCommand}"
                         Background="#2196F3" Foreground="White" FontWeight="Bold"/>
             </StackPanel>

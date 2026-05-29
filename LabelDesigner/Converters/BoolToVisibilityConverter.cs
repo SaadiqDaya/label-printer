@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
 
 namespace LabelDesigner.Converters;
 
@@ -17,6 +18,7 @@ public class InverseBoolConverter : IValueConverter
 [ValueConversion(typeof(bool), typeof(Visibility))]
 public class BoolToVisibilityConverter : IValueConverter
 {
+    // null, "false", or any non-boolean → Collapsed. Only the literal boolean `true` maps to Visible.
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
         value is true ? Visibility.Visible : Visibility.Collapsed;
 
@@ -34,12 +36,37 @@ public class InverseBoolToVisibilityConverter : IValueConverter
         value is not Visibility.Visible;
 }
 
-[ValueConversion(typeof(object), typeof(Visibility))]
-public class NullToVisibilityConverter : IValueConverter
+[ValueConversion(typeof(bool), typeof(Stretch))]
+public class BoolToStretchConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is null ? Visibility.Collapsed : Visibility.Visible;
+        value is true ? Stretch.Uniform : Stretch.None;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotImplementedException();
+}
+
+[ValueConversion(typeof(object), typeof(Visibility))]
+public class NullToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        bool isNull    = value is null;
+        bool inverse   = parameter?.ToString() == "inverse";
+        return (isNull != inverse) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotImplementedException();
+}
+
+/// <summary>Adds 1 to an integer for 1-based row/column display in ItemsControl.AlternationIndex bindings.</summary>
+[ValueConversion(typeof(int), typeof(int))]
+public class PlusOneConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is int i ? i + 1 : value;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is int i ? i - 1 : value;
 }

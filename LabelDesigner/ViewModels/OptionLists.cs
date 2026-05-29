@@ -18,12 +18,23 @@ public static class BarcodeFormatOptions
     public static readonly IReadOnlyList<BarcodeFormatOption> All =
     [
         BarcodeFormatOption.Code128,
-        BarcodeFormatOption.QRCode,
+        BarcodeFormatOption.GS1_128,
+        BarcodeFormatOption.Code39,
+        BarcodeFormatOption.Code93,
+        BarcodeFormatOption.ITF,
+        BarcodeFormatOption.Codabar,
         BarcodeFormatOption.EAN13,
         BarcodeFormatOption.UPCA,
+        BarcodeFormatOption.QRCode,
         BarcodeFormatOption.DataMatrix,
-        BarcodeFormatOption.PDF417
+        BarcodeFormatOption.PDF417,
+        BarcodeFormatOption.Aztec
     ];
+
+    /// <summary>True for 2-D symbologies (no human-readable text line; error-correction applies).</summary>
+    public static bool Is2D(BarcodeFormatOption f) =>
+        f is BarcodeFormatOption.QRCode or BarcodeFormatOption.DataMatrix
+          or BarcodeFormatOption.PDF417 or BarcodeFormatOption.Aztec;
 }
 
 public static class ShapeTypeOptions
@@ -32,6 +43,9 @@ public static class ShapeTypeOptions
     [
         ShapeType.Rectangle,
         ShapeType.Ellipse,
-        ShapeType.Line
+        ShapeType.Line,
+        ShapeType.Triangle,
+        ShapeType.Arrow,
+        ShapeType.Diamond
     ];
 }

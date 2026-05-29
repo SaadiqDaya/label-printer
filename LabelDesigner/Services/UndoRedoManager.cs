@@ -1,3 +1,5 @@
+using System.Windows.Input;
+
 namespace LabelDesigner.Services;
 
 public interface IUndoAction
@@ -7,50 +9,66 @@ public interface IUndoAction
 }
 
 /// <summary>
-/// Simple undo/redo stack.
+/// Bounded undo/redo stack.
 /// Push an action after every user-initiated change.
 /// Undo() reverses the most recent action; Redo() re-applies it.
 /// </summary>
 public class UndoRedoManager
 {
-    private readonly Stack<IUndoAction> _undoStack = new();
-    private readonly Stack<IUndoAction> _redoStack = new();
+    /// <summary>Maximum actions held per stack. Older actions are discarded silently.</summary>
+    public const int MaxStackSize = 200;
 
-    public bool CanUndo => _undoStack.Count > 0;
-    public bool CanRedo => _redoStack.Count > 0;
+    // LinkedList lets us trim from the bottom (oldest) in O(1) when the cap is hit.
+    private readonly LinkedList<IUndoAction> _undo = new();
+    private readonly LinkedList<IUndoAction> _redo = new();
+
+    public bool CanUndo => _undo.Count > 0;
+    public bool CanRedo => _redo.Count > 0;
 
     /// <summary>Raised whenever CanUndo or CanRedo changes.</summary>
     public event EventHandler? StateChanged;
 
     public void Push(IUndoAction action)
     {
-        _undoStack.Push(action);
-        _redoStack.Clear();
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        _undo.AddFirst(action);
+        if (_undo.Count > MaxStackSize) _undo.RemoveLast();
+        _redo.Clear();
+        OnStateChanged();
     }
 
     public void Undo()
     {
         if (!CanUndo) return;
-        var a = _undoStack.Pop();
+        var a = _undo.First!.Value;
+        _undo.RemoveFirst();
         a.Undo();
-        _redoStack.Push(a);
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        _redo.AddFirst(a);
+        if (_redo.Count > MaxStackSize) _redo.RemoveLast();
+        OnStateChanged();
     }
 
     public void Redo()
     {
         if (!CanRedo) return;
-        var a = _redoStack.Pop();
+        var a = _redo.First!.Value;
+        _redo.RemoveFirst();
         a.Redo();
-        _undoStack.Push(a);
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        _undo.AddFirst(a);
+        if (_undo.Count > MaxStackSize) _undo.RemoveLast();
+        OnStateChanged();
     }
 
     public void Clear()
     {
-        _undoStack.Clear();
-        _redoStack.Clear();
+        _undo.Clear();
+        _redo.Clear();
+        OnStateChanged();
+    }
+
+    private void OnStateChanged()
+    {
         StateChanged?.Invoke(this, EventArgs.Empty);
+        // Nudge WPF to re-evaluate any RelayCommand.CanExecute that depends on us.
+        CommandManager.InvalidateRequerySuggested();
     }
 }

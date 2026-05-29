@@ -29,6 +29,13 @@ internal sealed class ResizeAction(ElementViewModelBase vm,
     public void Redo() { vm.X = nx; vm.Y = ny; vm.Width = nw; vm.Height = nh; }
 }
 
+/// <summary>Groups several actions (e.g. an align/distribute over many elements) into ONE undo step.</summary>
+internal sealed class CompositeAction(IReadOnlyList<IUndoAction> actions) : IUndoAction
+{
+    public void Undo() { for (int i = actions.Count - 1; i >= 0; i--) actions[i].Undo(); }
+    public void Redo() { foreach (var a in actions) a.Redo(); }
+}
+
 internal sealed class AddElementAction(ElementViewModelBase vm, DesignerViewModel designer) : IUndoAction
 {
     public void Undo() => designer.RemoveElement(vm);

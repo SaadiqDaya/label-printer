@@ -9,8 +9,8 @@
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
-        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
-        <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <conv:BoolToVisibilityConverter    x:Key="BoolToVisibility" />
+        <conv:NullToVisibilityConverter    x:Key="NullToVisibility" />
     </Window.Resources>
 
     <DockPanel>
@@ -20,21 +20,50 @@
                 <MenuItem Header="_New Template..."   Command="{Binding NewCommand}"    InputGestureText="Ctrl+N" />
                 <MenuItem Header="_Open..."           Command="{Binding OpenCommand}"   InputGestureText="Ctrl+O" />
                 <Separator/>
-                <MenuItem Header="_Save"             Command="{Binding SaveCommand}"   InputGestureText="Ctrl+S" />
-                <MenuItem Header="Save _As..."       Command="{Binding SaveAsCommand}" />
+                <MenuItem Header="_Save"              Command="{Binding SaveCommand}"   InputGestureText="Ctrl+S" />
+                <MenuItem Header="Save _As..."        Command="{Binding SaveAsCommand}" />
+                <Separator/>
+                <MenuItem Header="Open Print _Station" Command="{Binding OpenPrintStationCommand}" />
+                <MenuItem Header="Settings..." Command="{Binding OpenSettingsCommand}" />
+                <Separator/>
+                <MenuItem Header="Recent _Templates" ItemsSource="{Binding RecentFileItems}">
+                    <MenuItem.ItemContainerStyle>
+                        <Style TargetType="MenuItem">
+                            <Setter Property="Header"  Value="{Binding Name}"/>
+                            <Setter Property="Command" Value="{Binding OpenCommand}"/>
+                            <Setter Property="ToolTip" Value="{Binding FilePath}"/>
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Import from _BarTender (.btw)…" Command="{Binding ImportFromBarTenderCommand}" />
                 <Separator/>
                 <MenuItem Header="E_xit" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Edit">
-                <MenuItem Header="_Undo"             Command="{Binding Designer.UndoCommand}"  InputGestureText="Ctrl+Z" />
-                <MenuItem Header="_Redo"             Command="{Binding Designer.RedoCommand}"  InputGestureText="Ctrl+Y" />
+                <MenuItem Header="_Undo"           Command="{Binding Designer.UndoCommand}"  InputGestureText="Ctrl+Z" />
+                <MenuItem Header="_Redo"           Command="{Binding Designer.RedoCommand}"  InputGestureText="Ctrl+Y" />
                 <Separator/>
-                <MenuItem Header="_Copy Element"     Command="{Binding Designer.CopyCommand}"  InputGestureText="Ctrl+C" />
-                <MenuItem Header="_Paste Element"    Command="{Binding Designer.PasteCommand}" InputGestureText="Ctrl+V" />
+                <MenuItem Header="_Copy Element"   Command="{Binding Designer.CopyCommand}"  InputGestureText="Ctrl+C" />
+                <MenuItem Header="_Paste Element"  Command="{Binding Designer.PasteCommand}" InputGestureText="Ctrl+V" />
                 <Separator/>
-                <MenuItem Header="_Delete Element"   Command="{Binding DeleteSelectedCommand}" InputGestureText="Del" />
+                <MenuItem Header="_Delete Element" Command="{Binding DeleteSelectedCommand}" InputGestureText="Del" />
+            </MenuItem>
+            <MenuItem Header="_Arrange">
+                <MenuItem Header="_Duplicate"            Command="{Binding Designer.DuplicateCommand}"   InputGestureText="Ctrl+D"/>
+                <Separator/>
+                <MenuItem Header="Align _Left"           Command="{Binding Designer.AlignLeftCommand}"/>
+                <MenuItem Header="Align _Right"          Command="{Binding Designer.AlignRightCommand}"/>
+                <MenuItem Header="Align _Top"            Command="{Binding Designer.AlignTopCommand}"/>
+                <MenuItem Header="Align _Bottom"         Command="{Binding Designer.AlignBottomCommand}"/>
+                <MenuItem Header="Center _Horizontally"  Command="{Binding Designer.AlignCenterHCommand}"/>
+                <MenuItem Header="Center _Vertically"    Command="{Binding Designer.AlignCenterVCommand}"/>
+                <Separator/>
+                <MenuItem Header="Distribute Hori_zontally" Command="{Binding Designer.DistributeHCommand}"/>
+                <MenuItem Header="Distribute Vertica_lly"   Command="{Binding Designer.DistributeVCommand}"/>
+                <Separator/>
+                <MenuItem Header="Bring to _Front"       Command="{Binding Designer.BringToFrontCommand}"/>
+                <MenuItem Header="Send to Bac_k"         Command="{Binding Designer.SendToBackCommand}"/>
             </MenuItem>
             <MenuItem Header="_Template">
                 <MenuItem Header="_Manage Fields / Excel Mapping…" Command="{Binding ManageFieldsCommand}" InputGestureText="Ctrl+M" />
@@ -51,10 +80,15 @@
             <Button ToolTip="Undo (Ctrl+Z)" Command="{Binding Designer.UndoCommand}" Padding="6,2">↩ Undo</Button>
             <Button ToolTip="Redo (Ctrl+Y)" Command="{Binding Designer.RedoCommand}" Padding="6,2">↪ Redo</Button>
             <Separator/>
-            <Button ToolTip="Add Text"      Command="{Binding AddTextCommand}"    Padding="6,2" Background="#DDEFFF">T Text</Button>
-            <Button ToolTip="Add Barcode"   Command="{Binding AddBarcodeCommand}" Padding="6,2" Background="#DDEFFF">Barcode</Button>
-            <Button ToolTip="Add Image"     Command="{Binding AddImageCommand}"   Padding="6,2" Background="#DDEFFF">Image</Button>
+            <Button ToolTip="Add Text"      Command="{Binding AddTextCommand}"      Padding="6,2" Background="#DDEFFF">T Text</Button>
+            <Button ToolTip="Add Barcode"   Command="{Binding AddBarcodeCommand}"   Padding="6,2" Background="#DDEFFF">Barcode</Button>
+            <Button ToolTip="Add Image"     Command="{Binding AddImageCommand}"     Padding="6,2" Background="#DDEFFF">Image</Button>
             <Button ToolTip="Add Rectangle" Command="{Binding AddRectangleCommand}" Padding="6,2" Background="#DDEFFF">Rect</Button>
+            <ToggleButton ToolTip="Draw Line — click then drag on the canvas to place"
+                          Command="{Binding AddLineCommand}"
+                          IsChecked="{Binding Designer.IsLineDrawMode, Mode=OneWay}"
+                          Padding="6,2" Background="#DDEFFF">Line ✏</ToggleButton>
+            <Button ToolTip="Add Table"     Command="{Binding AddTableCommand}"     Padding="6,2" Background="#DDEFFF">Table</Button>
             <Separator/>
             <Button ToolTip="Delete selected (Del)" Command="{Binding DeleteSelectedCommand}" Padding="6,2" Background="#FFDDDD">Delete</Button>
             <Separator/>
@@ -67,10 +101,6 @@
                      Visibility="{Binding Designer.SnapToGrid, Converter={StaticResource BoolToVisibility}}"/>
             <Separator/>
             <Button ToolTip="Print (Ctrl+P)" Command="{Binding PrintCommand}" Padding="6,2" FontWeight="Bold">Print...</Button>
-            <Separator/>
-            <Button ToolTip="Print multiple labels from an Excel spreadsheet"
-                    Command="{Binding ImportExcelCommand}"
-                    Padding="6,2" Background="#E8F5E9" FontWeight="SemiBold">Print from Excel...</Button>
             <Separator/>
             <Button ToolTip="Create a blank template sized from a BarTender .btw file"
                     Command="{Binding ImportFromBarTenderCommand}"
@@ -102,32 +132,8 @@
                 <ColumnDefinition Width="230" MinWidth="180" />
             </Grid.ColumnDefinitions>
 
-            <!-- ── Left panel: Templates + Elements tabs ── -->
+            <!-- ── Left panel: Elements / Layers / Data tabs ── -->
             <TabControl Grid.Column="0" Margin="4">
-
-                <!-- Templates tab -->
-                <TabItem Header="Templates">
-                    <ListBox ItemsSource="{Binding Templates}"
-                             SelectedItem="{Binding SelectedTemplateItem}"
-                             DisplayMemberPath="Name"
-                             MouseDoubleClick="TemplateList_DoubleClick"
-                             PreviewMouseRightButtonDown="TemplateList_RightClick">
-                        <ListBox.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Open"      Command="{Binding PlacementTarget.DataContext.OpenSelectedTemplateCommand,
-                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                <MenuItem Header="Rename…"   Command="{Binding PlacementTarget.DataContext.RenameSelectedTemplateCommand,
-                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                <MenuItem Header="Duplicate" Command="{Binding PlacementTarget.DataContext.DuplicateSelectedTemplateCommand,
-                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                <Separator/>
-                                <MenuItem Header="Delete…"   Command="{Binding PlacementTarget.DataContext.DeleteSelectedTemplateCommand,
-                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                          Foreground="#C00"/>
-                            </ContextMenu>
-                        </ListBox.ContextMenu>
-                    </ListBox>
-                </TabItem>
 
                 <!-- Elements tab -->
                 <TabItem Header="Elements">
@@ -136,21 +142,299 @@
                                    Text="Click to select on canvas" Margin="4,4,4,2"/>
                         <ListBox ItemsSource="{Binding Designer.Elements}"
                                  SelectedItem="{Binding Designer.SelectedElement}"
-                                 SelectionChanged="ElementList_SelectionChanged">
+                                 SelectionChanged="ElementList_SelectionChanged"
+                                 PreviewMouseRightButtonDown="ElementList_RightClick">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Move Forward (↑ Z)"
+                                              Command="{Binding PlacementTarget.DataContext.Designer.MoveElementForwardCommand,
+                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    <MenuItem Header="Move Backward (↓ Z)"
+                                              Command="{Binding PlacementTarget.DataContext.Designer.MoveElementBackwardCommand,
+                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Delete"
+                                              Command="{Binding PlacementTarget.DataContext.DeleteSelectedCommand,
+                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Foreground="#C00"/>
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="12" Margin="2,0"/>
-                                    </StackPanel>
+                                    <DockPanel>
+                                        <ComboBox DockPanel.Dock="Right" Width="65" Margin="4,0,0,0"
+                                                  FontSize="10" VerticalAlignment="Center"
+                                                  ItemsSource="{Binding AvailableLayers}"
+                                                  DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedLayer}"
+                                                  ToolTip="Layer assignment"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                                                   Margin="2,0" VerticalAlignment="Center"/>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneWay}"/>
                                     <Setter Property="Padding" Value="4,3"/>
                                 </Style>
                             </ListBox.ItemContainerStyle>
                         </ListBox>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Layers tab -->
+                <TabItem Header="Layers">
+                    <DockPanel DataContext="{Binding Designer}">
+                        <!-- Toolbar -->
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,4,4,2">
+                            <Button Content="+ Add"  Padding="8,2" Margin="0,0,4,0"
+                                    Command="{Binding AddLayerCommand}"
+                                    ToolTip="Add a new layer"/>
+                            <Button Content="Delete" Padding="8,2" Margin="0,0,4,0"
+                                    Command="{Binding DeleteLayerCommand}"
+                                    Foreground="#C00" ToolTip="Delete selected layer"/>
+                            <Button Content="↑" Padding="6,2" Margin="0,0,2,0"
+                                    Command="{Binding MoveLayerUpCommand}"/>
+                            <Button Content="↓" Padding="6,2"
+                                    Command="{Binding MoveLayerDownCommand}"/>
+                        </StackPanel>
+
+                        <!-- Layer list (top of list = frontmost in print) -->
+                        <ListBox DockPanel.Dock="Top" MaxHeight="130"
+                                 ItemsSource="{Binding Layers}"
+                                 SelectedItem="{Binding SelectedLayer}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel>
+                                        <ToggleButton DockPanel.Dock="Right" Width="22" Height="18"
+                                                      Content="✕" FontSize="9" Margin="2,0,0,0"
+                                                      IsChecked="{Binding IsHidden}"
+                                                      ToolTip="Hide layer completely in designer"
+                                                      Padding="0"
+                                                      Background="Transparent" BorderThickness="1"/>
+                                        <CheckBox DockPanel.Dock="Left"
+                                                  IsChecked="{Binding IsVisible}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,4,0"
+                                                  ToolTip="Dim layer elements (25% opacity) — uncheck to dim"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Selected layer properties -->
+                        <GroupBox DockPanel.Dock="Top" Margin="4,4,4,0" Padding="4"
+                                  Header="Selected Layer"
+                                  DataContext="{Binding SelectedLayer}"
+                                  Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Text="Name" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,4" Padding="3,2"/>
+
+                                <TextBlock Text="Print Condition" FontSize="10" Foreground="#555" Margin="0,4,0,1"/>
+                                <!-- Condition builder row -->
+                                <Grid Margin="0,2,0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="44"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="42"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="LayerCondFieldPicker" Grid.Column="0"
+                                              ItemsSource="{Binding AvailableFields}"
+                                              FontSize="10" Height="22"
+                                              ToolTip="Field to test"/>
+                                    <ComboBox x:Name="LayerCondOpPicker" Grid.Column="1" Margin="2,0"
+                                              FontSize="10" Height="22" SelectedIndex="0">
+                                        <ComboBoxItem>==</ComboBoxItem>
+                                        <ComboBoxItem>!=</ComboBoxItem>
+                                        <ComboBoxItem>&gt;</ComboBoxItem>
+                                        <ComboBoxItem>&gt;=</ComboBoxItem>
+                                        <ComboBoxItem>&lt;</ComboBoxItem>
+                                        <ComboBoxItem>&lt;=</ComboBoxItem>
+                                        <ComboBoxItem>set</ComboBoxItem>
+                                        <ComboBoxItem>empty</ComboBoxItem>
+                                    </ComboBox>
+                                    <TextBox x:Name="LayerCondValueBox" Grid.Column="2" Margin="0,2,0,2"
+                                             FontSize="10" Height="22"
+                                             ToolTip="Comparison value"/>
+                                    <Button Grid.Column="3" Content="↵ Add" Margin="2,2,0,2"
+                                            FontSize="9" Height="22"
+                                            Click="LayerInsertCondition_Click"/>
+                                </Grid>
+                                <!-- Condition list -->
+                                <ListView ItemsSource="{Binding ConditionList}" MaxHeight="70" Margin="0,0,0,2"
+                                          BorderThickness="1" BorderBrush="#CCC">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Content="✕" Width="18" Height="16"
+                                                        Click="LayerRemoveCondition_Click"
+                                                        Tag="{Binding}" Padding="0" FontSize="9"
+                                                        Background="Transparent"/>
+                                                <TextBlock Text="{Binding}" VerticalAlignment="Center"
+                                                           FontSize="10" TextWrapping="Wrap"/>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                                <TextBlock Text="Leave blank to always print this layer."
+                                           FontSize="9" Foreground="#999" FontStyle="Italic" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Top of list = frontmost layer. Assign elements via Properties panel."
+                                   FontSize="10" Foreground="#888" FontStyle="Italic"
+                                   TextWrapping="Wrap" Margin="6,8,6,4"/>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Data Sources tab -->
+                <TabItem Header="Data">
+                    <DockPanel DataContext="{Binding Designer}">
+                        <!-- Toolbar -->
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,4,4,2">
+                            <Button Content="+ Add" Padding="8,2" Margin="0,0,4,0"
+                                    Command="{Binding AddDataSourceCommand}"
+                                    ToolTip="Add a computed data source (date, time, serial, fixed…)"/>
+                            <Button Content="Delete" Padding="8,2" Foreground="#C00"
+                                    Command="{Binding RemoveDataSourceCommand}"
+                                    ToolTip="Remove selected data source"/>
+                        </StackPanel>
+
+                        <!-- Data source list -->
+                        <ListBox DockPanel.Dock="Top" MaxHeight="110"
+                                 ItemsSource="{Binding DataSources}"
+                                 SelectedItem="{Binding SelectedDataSource}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="11" Margin="2,1"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Selected source properties -->
+                        <GroupBox DockPanel.Dock="Top" Margin="4,4,4,0" Padding="4"
+                                  Header="Selected Source"
+                                  DataContext="{Binding SelectedDataSource}"
+                                  Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Text="Field Name" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="3,2" Margin="0,0,0,4"
+                                         ToolTip="Use this name as the Bound Field in text/barcode elements"/>
+
+                                <TextBlock Text="Type" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <ComboBox SelectedItem="{Binding Type}"
+                                          ItemsSource="{Binding Source={x:Static vm:DataSourceViewModel.AllTypes}}"
+                                          Margin="0,0,0,4"/>
+
+                                <!-- Fixed Value input (only shown when Type = FixedValue) -->
+                                <TextBlock Text="Fixed Value" FontSize="10" Foreground="#555" Margin="0,0,0,1">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Type}" Value="FixedValue">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBox Text="{Binding FixedValue, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="3,2" Margin="0,0,0,4"
+                                         ToolTip="This exact text is always output for this field">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Type}" Value="FixedValue">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+
+                                <TextBlock Text="Formula" FontSize="10" Foreground="#555" Margin="0,0,0,1"
+                                           Visibility="{Binding IsFormula, Converter={StaticResource BoolToVisibility}}"/>
+                                <TextBox Text="{Binding FormulaExpression, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="3,2" Margin="0,0,0,2" MinHeight="38" TextWrapping="Wrap"
+                                         Visibility="{Binding IsFormula, Converter={StaticResource BoolToVisibility}}"
+                                         ToolTip="e.g. UPPER({sku}) &amp; &quot;-&quot; &amp; {lot}   |   {qty} * {price}   |   LEFT({code},3)"/>
+                                <TextBlock FontSize="9" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,4"
+                                           Visibility="{Binding IsFormula, Converter={StaticResource BoolToVisibility}}"
+                                           Text="{}{Field} refs · &quot;text&quot; · &amp; concat · + - * / math · UPPER/LOWER/TRIM/LEFT/RIGHT/MID/CONCAT/ROUND"/>
+
+                                <TextBlock Text="Format" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding Format, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="3,2" Margin="0,0,0,4"
+                                         ToolTip="C# format: dd/MM/yyyy  HH:mm  D4  etc."/>
+
+                                <TextBlock Text="+ Months (RelativeDate)" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding RelativeMonths, UpdateSourceTrigger=LostFocus}"
+                                         Padding="3,2" Margin="0,0,0,4"/>
+
+                                <TextBlock Text="+ Days (RelativeDate)" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding RelativeDays, UpdateSourceTrigger=LostFocus}"
+                                         Padding="3,2" Margin="0,0,0,4"/>
+
+                                <TextBlock Text="Start Value (Serial)" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                <TextBox Text="{Binding SerialStart, UpdateSourceTrigger=LostFocus}"
+                                         Padding="3,2"/>
+
+                                <TextBlock Text="Increment (Serial)" FontSize="10" Foreground="#555" Margin="0,4,0,1"
+                                           Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}"/>
+                                <TextBox Text="{Binding Increment, UpdateSourceTrigger=LostFocus}" Padding="3,2"
+                                         Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}"
+                                         ToolTip="Amount added to the serial for each label"/>
+
+                                <TextBlock Text="Serial behaviour" FontSize="10" Foreground="#555" Margin="0,4,0,1"
+                                           Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}"/>
+                                <ComboBox SelectedItem="{Binding SerialMode}"
+                                          ItemsSource="{Binding Source={x:Static vm:DataSourceViewModel.AllSerialModes}}"
+                                          Margin="0,0,0,2"
+                                          Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}"
+                                          ToolTip="Continuous = keeps counting across jobs (needs a stable store; share it for multiple stations). ResetPerBatch = starts at the Start Value every job."/>
+                                <TextBlock FontSize="9" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,4"
+                                           Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}"
+                                           Text="Continuous needs a shared folder for multiple stations (File ▸ Settings). ResetPerBatch needs none."/>
+
+                                <Grid Margin="0,2,0,0" Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Prefix" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                        <TextBox Text="{Binding SerialPrefix, UpdateSourceTrigger=PropertyChanged}" Padding="3,2"
+                                                 ToolTip="e.g. CTN-"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Suffix" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                        <TextBox Text="{Binding SerialSuffix, UpdateSourceTrigger=PropertyChanged}" Padding="3,2"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,2,0,0" Visibility="{Binding IsSerial, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" Content="Alphanumeric (0-9 A-Z)" VerticalAlignment="Center"
+                                              IsChecked="{Binding SerialAlphanumeric}"
+                                              ToolTip="Base-36 counter, e.g. 0001 → 000Z → 0010"/>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Pad width" FontSize="10" Foreground="#555" Margin="0,0,0,1"/>
+                                        <TextBox Width="50" Text="{Binding SerialPadWidth, UpdateSourceTrigger=LostFocus}" Padding="3,2"
+                                                 ToolTip="Zero-pad width for alphanumeric serials"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Bind elements to these field names via Bound Field in the Properties panel."
+                                   FontSize="10" Foreground="#888" FontStyle="Italic"
+                                   TextWrapping="Wrap" Margin="6,8,6,4"/>
                     </DockPanel>
                 </TabItem>
 

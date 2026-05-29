@@ -2,14 +2,20 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:designer="clr-namespace:LabelDesigner.Designer"
+             xmlns:conv="clr-namespace:LabelDesigner.Converters"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="28"/>  <!-- zoom bar -->
-            <RowDefinition Height="*"/>   <!-- canvas area -->
+            <RowDefinition Height="28"/>    <!-- zoom bar -->
+            <RowDefinition Height="*"/>     <!-- canvas area -->
+            <RowDefinition Height="Auto"/>  <!-- record navigation -->
         </Grid.RowDefinitions>
 
         <!-- Zoom controls -->
@@ -46,9 +52,11 @@
 
         <!-- Canvas area -->
         <Grid Grid.Row="1" Background="#5A5A5A">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+            <ScrollViewer x:Name="MainScrollViewer"
+                          HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
-                          Padding="20">
+                          Padding="20"
+                          PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
 
                     <!-- Drop shadow wrapper -->
@@ -74,5 +82,102 @@
                 </StackPanel>
             </ScrollViewer>
         </Grid>
+        <!-- Row 2: Record navigation bar — visible when a data file is connected -->
+        <Border Grid.Row="2" Background="#2E2E2E" Padding="6,4"
+                Visibility="{Binding HasConnectedFile, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <!-- Load + Unload buttons always shown when file is connected -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Content="⟳ Load" Height="22" Padding="10,0"
+                            Command="{Binding LoadDataCommand}"
+                            Background="#2D6A4F" Foreground="White" BorderThickness="0"
+                            ToolTip="Load / refresh rows from the connected Excel file"/>
+                    <Button Content="⊘ Unload" Height="22" Padding="8,0" Margin="6,0,0,0"
+                            Command="{Binding ClearDataCommand}"
+                            Background="#6B3A3A" Foreground="White" BorderThickness="0"
+                            Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}"
+                            ToolTip="Disconnect live data and revert to template placeholders"/>
+                </StackPanel>
+
+                <!-- Navigation — centred, only visible when rows are loaded -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                            Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
+                    <Button Content="◄ Prev" Width="62" Height="22"
+                            Command="{Binding PreviousRowCommand}"
+                            Margin="0,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#444"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#BBBBBB"/>
+                                                    <Setter Property="Foreground" Value="#444444"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#555555"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <TextBlock Text="{Binding RowInfo}" Foreground="#DDD" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0"/>
+                    <TextBlock Text="Go to:" Foreground="#AAA" FontSize="10"
+                               VerticalAlignment="Center" Margin="8,0,2,0"/>
+                    <TextBox x:Name="GotoRowBox" Width="48" Height="20" Padding="2,1"
+                             Text="{Binding CurrentRowNumber, UpdateSourceTrigger=LostFocus}"
+                             KeyDown="GotoRowBox_KeyDown"
+                             ToolTip="Type a record number and press Enter"
+                             VerticalContentAlignment="Center"/>
+                    <Button Content="Browse…" Height="22" Padding="8,0" Margin="6,0,0,0"
+                            Command="{Binding BrowseRecordsCommand}"
+                            Background="#444" Foreground="White" BorderThickness="0"
+                            ToolTip="Open full record list"/>
+                    <Button Content="Next ►" Width="62" Height="22"
+                            Command="{Binding NextRowCommand}"
+                            Margin="4,0,0,0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#444"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#BBBBBB"/>
+                                                    <Setter Property="Foreground" Value="#444444"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#555555"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
     </Grid>
 </UserControl>

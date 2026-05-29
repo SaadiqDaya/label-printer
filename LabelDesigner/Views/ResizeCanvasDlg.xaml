@@ -1,7 +1,7 @@
 <Window x:Class="LabelDesigner.Views.ResizeCanvasDlg"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Resize Canvas" Width="320" Height="280"
+        Title="Label Setup" Width="340" Height="520"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize" ShowInTaskbar="False">
     <StackPanel Margin="16">
@@ -22,6 +22,34 @@
                 <TextBox x:Name="HeightBox" Padding="4"/>
             </StackPanel>
         </Grid>
+
+        <TextBlock Text="Printer resolution (DPI)" Foreground="#555" FontSize="11" Margin="0,0,0,2"/>
+        <ComboBox x:Name="DpiBox" IsEditable="True" Margin="0,0,0,12" Padding="4"
+                  ToolTip="Zebra ZD621 is 203 or 300 dpi. Barcodes are rendered at this resolution for crisp, scannable bars.">
+            <ComboBoxItem>203</ComboBoxItem>
+            <ComboBoxItem>300</ComboBoxItem>
+            <ComboBoxItem>600</ComboBoxItem>
+        </ComboBox>
+
+        <TextBlock Text="Output backend" Foreground="#555" FontSize="11" Margin="0,0,0,1"/>
+        <ComboBox x:Name="OutputBox" Margin="0,0,0,8" Padding="4"
+                  ToolTip="GDI = Windows driver (default). ZPL = native Zebra commands (validate on hardware).">
+            <ComboBoxItem Content="GDI raster (Windows driver) — default"/>
+            <ComboBoxItem Content="Native ZPL (Zebra)"/>
+        </ComboBox>
+        <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Darkness (0-30)" Foreground="#555" FontSize="11"/>
+                <TextBox x:Name="DarknessBox" Padding="4" ToolTip="Blank = leave driver default"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Speed (ips)" Foreground="#555" FontSize="11"/>
+                <TextBox x:Name="SpeedBox" Padding="4" ToolTip="Blank = leave driver default"/>
+            </StackPanel>
+        </Grid>
+        <TextBlock Text="ZPL network host (blank = Windows queue)" Foreground="#555" FontSize="11"/>
+        <TextBox x:Name="ZplHostBox" Padding="4" Margin="0,0,0,10" ToolTip="Printer IP for raw TCP 9100 (ZPL mode only)"/>
 
         <TextBlock Text="Common sizes:" Foreground="#777" FontSize="11" Margin="0,0,0,4"/>
         <WrapPanel Margin="0,0,0,16">

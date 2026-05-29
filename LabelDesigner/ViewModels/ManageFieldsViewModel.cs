@@ -173,8 +173,8 @@ public class ManageFieldsViewModel : ViewModelBase
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-            Title  = "Select Primary Excel Data File for this Template"
+            Filter = "Data files (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Excel (*.xlsx)|*.xlsx|CSV/TSV (*.csv;*.tsv)|*.csv;*.tsv|All files (*.*)|*.*",
+            Title  = "Select Primary Data File (Excel or CSV) for this Template"
         };
         if (dlg.ShowDialog() != true) return;
         ExcelPath = dlg.FileName;
@@ -184,8 +184,8 @@ public class ManageFieldsViewModel : ViewModelBase
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-            Title  = "Select Secondary / Lookup Excel File"
+            Filter = "Data files (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Excel (*.xlsx)|*.xlsx|CSV/TSV (*.csv;*.tsv)|*.csv;*.tsv|All files (*.*)|*.*",
+            Title  = "Select Secondary / Lookup File (Excel or CSV)"
         };
         if (dlg.ShowDialog() != true) return;
         SecondaryExcelPath = dlg.FileName;
@@ -201,13 +201,27 @@ public class ManageFieldsViewModel : ViewModelBase
         }
         try
         {
-            var headers = ExcelImportService.ReadHeaders(_excelPath);
+            var headers = DataImporter.ReadHeaders(_excelPath);
             foreach (var h in headers)
                 AvailableHeaders.Add(new ColumnHeaderItem(h.Letter, h.Header));
+
+            // If no fields exist yet, seed the mapping grid from the Excel column headers
+            if (Mappings.Count == 0)
+            {
+                foreach (var h in AvailableHeaders)
+                {
+                    var fieldName = SanitizeFieldName(h.Header);
+                    if (!string.IsNullOrEmpty(fieldName) && !Mappings.Any(m => m.FieldName == fieldName))
+                        Mappings.Add(new FieldMappingItem(fieldName, h.Letter));
+                }
+            }
         }
         catch { /* leave empty */ }
         OnPropertyChanged(nameof(HasHeaders));
     }
+
+    private static string SanitizeFieldName(string header) =>
+        new string(header.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
 
     private void LoadSecondaryHeaders()
     {
@@ -219,7 +233,7 @@ public class ManageFieldsViewModel : ViewModelBase
         }
         try
         {
-            var headers = ExcelImportService.ReadHeaders(_secondaryExcelPath);
+            var headers = DataImporter.ReadHeaders(_secondaryExcelPath);
             foreach (var h in headers)
                 SecondaryAvailableHeaders.Add(new ColumnHeaderItem(h.Letter, h.Header));
         }

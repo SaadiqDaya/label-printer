@@ -72,11 +72,25 @@ public static class ExcelImportService
             // Skip completely empty rows
             if (fields.Values.All(string.IsNullOrEmpty)) continue;
 
-            int printQty = 1;
-            if (!string.IsNullOrWhiteSpace(template.PrintQtyColumn))
+            // PrintQty rules:
+            //   - No PrintQtyColumn configured → default to 1 (print every row once).
+            //   - PrintQtyColumn configured → use the row's value verbatim. Empty / non-numeric / 0
+            //     means "skip this row" (qty 0); negatives clamp to 0.
+            int printQty;
+            if (string.IsNullOrWhiteSpace(template.PrintQtyColumn))
             {
-                var raw = row.Cell(template.PrintQtyColumn.Trim().ToUpper()).GetString().Trim();
-                if (int.TryParse(raw, out var q)) printQty = q;
+                printQty = 1;
+            }
+            else
+            {
+                // PrintQtyColumn can be a template field name (e.g. "Qty") or a raw Excel column letter (e.g. "C")
+                string raw;
+                if (fields.TryGetValue(template.PrintQtyColumn, out var fieldVal))
+                    raw = fieldVal; // matched a mapped field name — preferred
+                else
+                    raw = row.Cell(template.PrintQtyColumn.Trim().ToUpper()).GetString().Trim(); // fallback: treat as column letter
+
+                printQty = int.TryParse(raw, out var q) ? Math.Max(0, q) : 0;
             }
 
             results.Add(new ExcelRow(fields, printQty));

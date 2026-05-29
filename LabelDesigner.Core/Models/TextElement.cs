@@ -12,15 +12,18 @@ public class TextElement : LabelElement
     public bool Underline { get; set; }
     public string Color { get; set; } = "#000000";
     public TextAlignmentOption Alignment { get; set; } = TextAlignmentOption.Left;
+    public bool FitToBox { get; set; } = false;
+    /// <summary>When true, long text wraps onto multiple lines. When false, the element renders as a single line (default).</summary>
+    public bool MultiLine { get; set; } = false;
 
     public override ElementType Type => ElementType.Text;
 
     public override LabelElement Clone() => new TextElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-        PrintCondition = PrintCondition,
+        PrintCondition = PrintCondition, LayerId = LayerId, BackgroundColor = BackgroundColor, Rotation = Rotation,
         Text = Text, BoundField = BoundField, FontFamily = FontFamily,
         FontSize = FontSize, Bold = Bold, Italic = Italic, Underline = Underline,
-        Color = Color, Alignment = Alignment
+        Color = Color, Alignment = Alignment, FitToBox = FitToBox, MultiLine = MultiLine
     };
 }

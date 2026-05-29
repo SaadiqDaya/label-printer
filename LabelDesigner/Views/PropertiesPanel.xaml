@@ -8,7 +8,9 @@
              mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="230">
 
     <UserControl.Resources>
-        <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <conv:NullToVisibilityConverter    x:Key="NullToVisibility" />
+        <conv:BoolToVisibilityConverter    x:Key="BoolToVisibility" />
+        <conv:PlusOneConverter             x:Key="PlusOne" />
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="0,2,0,4" />
             <Setter Property="Padding" Value="3,2" />
@@ -60,7 +62,41 @@
 
                     <TextBlock Text="Z" Style="{StaticResource Label}" Grid.Row="2" Grid.Column="0"/>
                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ZIndex, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="R°" Style="{StaticResource Label}" Grid.Row="2" Grid.Column="2"/>
+                    <TextBox Grid.Row="2" Grid.Column="3"
+                             Text="{Binding Rotation, StringFormat={}{0:F0}, UpdateSourceTrigger=LostFocus}"
+                             ToolTip="Rotation in degrees (e.g. 0, 90, 180, 270) — applied on canvas and at print"/>
                 </Grid>
+            </GroupBox>
+
+            <!-- Background color (all element types) -->
+            <GroupBox Header="Background"
+                      Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="28"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding BackgroundColor, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,2,4"/>
+                    <Border Grid.Column="1" Margin="0,3,2,5" CornerRadius="2"
+                            BorderThickness="1" BorderBrush="#AAA"
+                            Background="{Binding BackgroundBrush}"
+                            Cursor="Hand" MouseLeftButtonUp="PickBackgroundColor_Click"
+                            ToolTip="Click to open color picker"/>
+                    <Button Grid.Column="2" Content="..." Margin="0,2,0,4"
+                            Click="PickBackgroundColor_Click"
+                            ToolTip="Open color picker (or type Transparent for none)"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Layer assignment -->
+            <GroupBox Header="Layer"
+                      Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <ComboBox ItemsSource="{Binding AvailableLayers}"
+                          DisplayMemberPath="Name"
+                          SelectedItem="{Binding SelectedLayer}"
+                          ToolTip="Layer this element belongs to"/>
             </GroupBox>
 
             <!-- Print condition -->
@@ -68,8 +104,52 @@
                       Visibility="{Binding Converter={StaticResource NullToVisibility}}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Label}" Text="Show element only when:" />
-                    <TextBox Text="{Binding PrintCondition, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="{}{Field} == &quot;value&quot;   or   {Field} != &quot;value&quot;&#x0a;{Field} &gt; 0   (also &gt;=, &lt;, &lt;=)&#x0a;{Field}   — non-empty (truthy)&#x0a;!{Field}  — empty (falsy)&#x0a;Leave blank to always print." />
+                    <!-- Builder row -->
+                    <Grid Margin="0,2,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="42"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="CondFieldPicker" Grid.Column="0"
+                                  ItemsSource="{Binding AvailableFields}"
+                                  FontSize="10" Height="22"
+                                  ToolTip="Field or data source to test"/>
+                        <ComboBox x:Name="CondOpPicker" Grid.Column="1" Margin="2,0"
+                                  FontSize="10" Height="22" SelectedIndex="0">
+                            <ComboBoxItem>==</ComboBoxItem>
+                            <ComboBoxItem>!=</ComboBoxItem>
+                            <ComboBoxItem>&gt;</ComboBoxItem>
+                            <ComboBoxItem>&gt;=</ComboBoxItem>
+                            <ComboBoxItem>&lt;</ComboBoxItem>
+                            <ComboBoxItem>&lt;=</ComboBoxItem>
+                            <ComboBoxItem>set</ComboBoxItem>
+                            <ComboBoxItem>empty</ComboBoxItem>
+                        </ComboBox>
+                        <TextBox x:Name="CondValueBox" Grid.Column="2" Margin="0,2,0,2"
+                                 FontSize="10" Height="22"
+                                 ToolTip="Comparison value (no quotes needed)"/>
+                        <Button Grid.Column="3" Content="↵ Add" Margin="2,2,0,2"
+                                FontSize="9" Height="22"
+                                Click="InsertCondition_Click"
+                                ToolTip="Add this condition clause"/>
+                    </Grid>
+                    <!-- Condition clause list -->
+                    <ListView ItemsSource="{Binding ConditionList}" MaxHeight="80" Margin="0,0,0,2"
+                              BorderThickness="1" BorderBrush="#CCC">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="✕" Width="18" Height="16"
+                                            Click="RemoveCondition_Click" Tag="{Binding}"
+                                            Padding="0" FontSize="9" Background="Transparent"/>
+                                    <TextBlock Text="{Binding}" VerticalAlignment="Center"
+                                               FontSize="10" TextWrapping="Wrap"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                     <TextBlock Text="{}{Field} == &quot;val&quot; | {Field} &gt; 0 | {Field} | !{Field}"
                                FontSize="9" Foreground="#999" FontStyle="Italic" Margin="0,2,0,0"/>
                 </StackPanel>
@@ -85,14 +165,14 @@
                         <StackPanel>
                             <GroupBox Header="Text">
                                 <StackPanel>
-                                    <TextBlock Text="Content" Style="{StaticResource Label}"/>
+                                    <TextBlock Text="Default Value" Style="{StaticResource Label}"/>
                                     <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
 
                                     <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
                                     <ComboBox IsEditable="True"
                                               ItemsSource="{Binding AvailableFields}"
-                                              Text="{Binding BoundField, UpdateSourceTrigger=LostFocus}"
-                                              ToolTip="Select a mapped field or leave blank for static text" />
+                                              Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
+                                              ToolTip="Select a field from the Data tab or leave blank for static text" />
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Font">
@@ -103,17 +183,47 @@
                                               ItemsSource="{Binding Source={x:Static Fonts.SystemFontFamilies}}"
                                               DisplayMemberPath="Source" />
 
+                                    <!-- Size + Fit to Box on the same row -->
                                     <TextBlock Text="Size" Style="{StaticResource Label}"/>
-                                    <TextBox Text="{Binding FontSize, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Grid Margin="0,2,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Margin="0"
+                                                 Text="{Binding FontSize, UpdateSourceTrigger=LostFocus}" />
+                                        <CheckBox Grid.Column="1" Content="Fit" IsChecked="{Binding FitToBox}"
+                                                  Margin="6,0,0,0" VerticalAlignment="Center"
+                                                  ToolTip="Auto-size font so text fills the element"/>
+                                        <CheckBox Grid.Column="2" Content="Multi-line" IsChecked="{Binding MultiLine}"
+                                                  Margin="6,0,0,0" VerticalAlignment="Center"
+                                                  ToolTip="Wrap long text onto multiple lines (off = single line)"/>
+                                    </Grid>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                         <CheckBox Content="Bold"      IsChecked="{Binding Bold}"      Margin="0,0,10,0"/>
                                         <CheckBox Content="Italic"    IsChecked="{Binding Italic}"    Margin="0,0,10,0"/>
                                         <CheckBox Content="Underline" IsChecked="{Binding Underline}" />
                                     </StackPanel>
 
-                                    <TextBlock Text="Color (hex or name)" Style="{StaticResource Label}"/>
-                                    <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Text="Color" Style="{StaticResource Label}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="28"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,2,4"/>
+                                        <Border Grid.Column="1" Margin="0,3,2,5" CornerRadius="2"
+                                                BorderThickness="1" BorderBrush="#AAA"
+                                                Background="{Binding ForegroundBrush}"
+                                                Cursor="Hand" MouseLeftButtonUp="PickTextColor_Click"
+                                                ToolTip="Click to open color picker"/>
+                                        <Button Grid.Column="2" Content="..." Margin="0,2,0,4"
+                                                Click="PickTextColor_Click"
+                                                ToolTip="Open color picker"/>
+                                    </Grid>
 
                                     <TextBlock Text="Alignment" Style="{StaticResource Label}"/>
                                     <ComboBox SelectedItem="{Binding Alignment}"
@@ -133,14 +243,48 @@
                                 <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
                                 <ComboBox IsEditable="True"
                                           ItemsSource="{Binding AvailableFields}"
-                                          Text="{Binding BoundField, UpdateSourceTrigger=LostFocus}"
-                                          ToolTip="Select a mapped field or leave blank for static value" />
+                                          Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="Select a field from the Data tab or leave blank for static value" />
 
                                 <TextBlock Text="Format" Style="{StaticResource Label}"/>
                                 <ComboBox SelectedItem="{Binding Format}"
                                           ItemsSource="{Binding Source={x:Static vm:BarcodeFormatOptions.All}}" />
 
-                                <CheckBox Content="Show Text Below" IsChecked="{Binding ShowText}" Margin="0,6,0,0"/>
+                                <CheckBox Content="Show Human-Readable Text Below"
+                                          IsChecked="{Binding ShowText}" Margin="0,6,0,4"/>
+
+                                <!-- Font controls — only visible when ShowText is checked -->
+                                <StackPanel Visibility="{Binding ShowText, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Text Font Family" Style="{StaticResource Label}"/>
+                                    <ComboBox IsEditable="True"
+                                              Text="{Binding TextFontFamily, UpdateSourceTrigger=PropertyChanged}"
+                                              ItemsSource="{Binding Source={x:Static Fonts.SystemFontFamilies}}"
+                                              DisplayMemberPath="Source"
+                                              ToolTip="Font used for the human-readable text below the barcode"/>
+
+                                    <TextBlock Text="Text Font Size (px)" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding TextFontSize, UpdateSourceTrigger=LostFocus}"
+                                             ToolTip="Pixel size of the human-readable text"/>
+                                </StackPanel>
+
+                                <!-- Scanning / thermal quality -->
+                                <TextBlock Text="X-dimension (mm, 0 = auto)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding XDimensionMm, UpdateSourceTrigger=LostFocus}"
+                                         ToolTip="Narrow-bar width in mm for 1-D codes; 0 fits the element box"/>
+                                <TextBlock Text="Quiet zone (mm)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding QuietZoneMm, UpdateSourceTrigger=LostFocus}"
+                                         ToolTip="Clear margin each side — standards want ~10× the X-dimension"/>
+                                <TextBlock Text="2-D error correction (0=L,1=M,2=Q,3=H)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding ErrorCorrectionLevel, UpdateSourceTrigger=LostFocus}"
+                                         ToolTip="QR / Aztec error-correction level"/>
+
+                                <!-- Live design-time validation: red banner when the value can't encode -->
+                                <Border Margin="0,6,0,0" Padding="5" CornerRadius="2"
+                                        Background="#FFF3F3" BorderBrush="#E0A0A0" BorderThickness="1"
+                                        Visibility="{Binding HasValidationError, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="{Binding ValidationMessage}" Foreground="#B00020"
+                                               FontSize="10" TextWrapping="Wrap"/>
+                                </Border>
                             </StackPanel>
                         </GroupBox>
                     </DataTemplate>
@@ -159,34 +303,232 @@
                                     <Button Grid.Column="1" Content="..." Width="26" Margin="2,2,0,4"
                                             Click="BrowseImage_Click"/>
                                 </Grid>
+                                <TextBlock Text="Bound Field (path from data)" Style="{StaticResource Label}"/>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding AvailableFields}"
+                                          Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="When set, the image file path comes from this field per record"/>
+                                <TextBlock Text="Base Folder (optional)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding ImageBaseFolder, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Combined with the field value, e.g. C:\icons + milk.png"/>
+
                                 <CheckBox Content="Maintain Aspect Ratio" IsChecked="{Binding MaintainAspectRatio}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Opacity" Style="{StaticResource Label}"/>
-                                <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}"
+                                        TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+
+                                <TextBlock Text="Thermal mode" Style="{StaticResource Label}"/>
+                                <ComboBox SelectedItem="{Binding RenderMode}"
+                                          ItemsSource="{Binding Source={x:Static vm:ImageElementViewModel.RenderModes}}"
+                                          ToolTip="Color / Grayscale / Threshold / Dither (Floyd–Steinberg) for crisp mono-thermal logos"/>
+                                <CheckBox Content="Invert" IsChecked="{Binding Invert}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Threshold (for Threshold mode)" Style="{StaticResource Label}"/>
+                                <Slider Minimum="0" Maximum="255" Value="{Binding Threshold}"
+                                        TickFrequency="16" IsSnapToTickEnabled="True"/>
                             </StackPanel>
                         </GroupBox>
                     </DataTemplate>
 
                     <!-- ── Shape element properties ── -->
                     <DataTemplate DataType="{x:Type vm:ShapeElementViewModel}">
-                        <GroupBox Header="Shape">
-                            <StackPanel>
-                                <TextBlock Text="Type" Style="{StaticResource Label}"/>
-                                <ComboBox SelectedItem="{Binding ShapeType}"
-                                          ItemsSource="{Binding Source={x:Static vm:ShapeTypeOptions.All}}" />
+                        <StackPanel>
+                            <GroupBox Header="Shape">
+                                <StackPanel>
+                                    <TextBlock Text="Type" Style="{StaticResource Label}"/>
+                                    <ComboBox SelectedItem="{Binding ShapeType}"
+                                              ItemsSource="{Binding Source={x:Static vm:ShapeTypeOptions.All}}" />
 
-                                <TextBlock Text="Fill Color" Style="{StaticResource Label}"/>
-                                <TextBox Text="{Binding FillColor, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Text="Fill Color" Style="{StaticResource Label}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="28"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding FillColor, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,2,4"/>
+                                        <Border Grid.Column="1" Margin="0,3,2,5" CornerRadius="2"
+                                                BorderThickness="1" BorderBrush="#AAA"
+                                                Background="{Binding FillBrush}"
+                                                Cursor="Hand" MouseLeftButtonUp="PickFillColor_Click"
+                                                ToolTip="Click to open color picker"/>
+                                        <Button Grid.Column="2" Content="..." Margin="0,2,0,4"
+                                                Click="PickFillColor_Click" ToolTip="Pick fill color"/>
+                                    </Grid>
 
-                                <TextBlock Text="Stroke Color" Style="{StaticResource Label}"/>
-                                <TextBox Text="{Binding StrokeColor, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Text="Stroke Color" Style="{StaticResource Label}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="28"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding StrokeColor, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,2,4"/>
+                                        <Border Grid.Column="1" Margin="0,3,2,5" CornerRadius="2"
+                                                BorderThickness="1" BorderBrush="#AAA"
+                                                Background="{Binding StrokeBrush}"
+                                                Cursor="Hand" MouseLeftButtonUp="PickStrokeColor_Click"
+                                                ToolTip="Click to open color picker"/>
+                                        <Button Grid.Column="2" Content="..." Margin="0,2,0,4"
+                                                Click="PickStrokeColor_Click" ToolTip="Pick stroke color"/>
+                                    </Grid>
 
-                                <TextBlock Text="Stroke Thickness" Style="{StaticResource Label}"/>
-                                <TextBox Text="{Binding StrokeThickness, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Text="Stroke Thickness" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding StrokeThickness, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Text="Corner Radius" Style="{StaticResource Label}"/>
-                                <TextBox Text="{Binding CornerRadius, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </GroupBox>
+                                    <TextBlock Text="Corner Radius" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding CornerRadius, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Line-specific controls (only visible when ShapeType = Line) -->
+                            <GroupBox Header="Line Endpoints">
+                                <GroupBox.Style>
+                                    <Style TargetType="GroupBox">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ShapeType}" Value="Line">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </GroupBox.Style>
+                                <StackPanel>
+                                    <TextBlock FontSize="10" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,4"
+                                               Text="Line goes from (X,Y) to (X+EndX, Y+EndY). Use W and H in Position panel, or set here."/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="End X" Style="{StaticResource Label}" Grid.Column="0" Margin="0,4,4,1"/>
+                                        <TextBox Grid.Column="1" Text="{Binding Width, UpdateSourceTrigger=LostFocus}"
+                                                 ToolTip="Horizontal distance to end point (can be negative to go left)"/>
+                                        <TextBlock Text="End Y" Style="{StaticResource Label}" Grid.Column="2" Margin="4,4,4,1"/>
+                                        <TextBox Grid.Column="3" Text="{Binding Height, UpdateSourceTrigger=LostFocus}"
+                                                 ToolTip="Vertical distance to end point (down = positive)"/>
+                                    </Grid>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </DataTemplate>
+
+                    <!-- ── Table element properties ── -->
+                    <DataTemplate DataType="{x:Type vm:TableElementViewModel}">
+                        <StackPanel>
+                            <!-- Rows section -->
+                            <GroupBox Header="Table Rows">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Button Content="+ Row" Padding="6,2" Margin="0,0,4,0"
+                                                Command="{Binding AddRowCommand}"
+                                                ToolTip="Add a data row"/>
+                                        <Button Content="- Row" Padding="6,2" Foreground="#C00"
+                                                Command="{Binding RemoveRowCommand}"
+                                                ToolTip="Remove last row"/>
+                                    </StackPanel>
+                                    <TextBlock DockPanel.Dock="Top" FontSize="9" Foreground="#888" Margin="0,0,0,2"
+                                               Text="Each cell below maps to a column (left to right)."/>
+                                    <!-- Rows list: each row has a number + editable cells -->
+                                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto" DockPanel.Dock="Top">
+                                        <ItemsControl ItemsSource="{Binding Rows}" AlternationCount="9999">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderThickness="0,0,0,1" BorderBrush="#DDD" Margin="0,1" Padding="0,2">
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Left" Width="22"
+                                                                       FontSize="10" Foreground="#888"
+                                                                       VerticalAlignment="Center"
+                                                                       TextAlignment="Right" Margin="0,0,4,0"
+                                                                       Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter},
+                                                                                       Path=(ItemsControl.AlternationIndex),
+                                                                                       Converter={StaticResource PlusOne},
+                                                                                       StringFormat='{}{0}.'}"/>
+                                                            <ItemsControl ItemsSource="{Binding Cells}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <StackPanel Orientation="Horizontal"/>
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <TextBox MinWidth="60" Margin="1,0" Padding="2,1"
+                                                                                 Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                                                 ToolTip="Cell value"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </DockPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Table Columns">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Button Content="+ Col" Padding="6,2" Margin="0,0,4,0"
+                                                Command="{Binding AddColumnCommand}"
+                                                ToolTip="Add a column"/>
+                                        <Button Content="- Col" Padding="6,2" Foreground="#C00"
+                                                Command="{Binding RemoveColumnCommand}"
+                                                ToolTip="Remove last column"/>
+                                    </StackPanel>
+                                    <TextBlock DockPanel.Dock="Top" FontSize="9" Foreground="#888"
+                                               Text="Header | Bound Field | Width" Margin="0,0,0,2"/>
+                                    <ListBox ItemsSource="{Binding Columns}" MaxHeight="140"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,1">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="36"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Margin="0,0,2,0" Padding="2,1"
+                                                             Text="{Binding Header, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="Column header text"/>
+                                                    <ComboBox Grid.Column="1" Margin="0,0,2,0"
+                                                              IsEditable="True"
+                                                              ItemsSource="{Binding AvailableFields}"
+                                                              Text="{Binding BoundField, UpdateSourceTrigger=LostFocus}"
+                                                              ToolTip="Field name to show in this column"/>
+                                                    <TextBox Grid.Column="2" Padding="2,1"
+                                                             Text="{Binding Width, UpdateSourceTrigger=LostFocus}"
+                                                             ToolTip="Column width (relative units)"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Style">
+                                <StackPanel>
+                                    <CheckBox Content="Show Header Row" IsChecked="{Binding ShowHeader}" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Row Height" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding RowHeight, UpdateSourceTrigger=LostFocus}"/>
+                                    <TextBlock Text="Header Background" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding HeaderBackground, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Cell Background" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding CellBackground, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Border Color" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding BorderColor, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Border Thickness" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding TableBorderThickness, UpdateSourceTrigger=LostFocus}"/>
+                                    <TextBlock Text="Font Family" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding TableFontFamily, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Header Font Size" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding HeaderFontSize, UpdateSourceTrigger=LostFocus}"/>
+                                    <TextBlock Text="Cell Font Size" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding CellFontSize, UpdateSourceTrigger=LostFocus}"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
                     </DataTemplate>
 
                 </ContentControl.Resources>

@@ -44,13 +44,23 @@ public class DesignerItem : ContentControl
         ViewModel = viewModel;
         DataContext = viewModel;
 
-        SetBinding(Canvas.LeftProperty,  new System.Windows.Data.Binding(nameof(ElementViewModelBase.X)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-        SetBinding(Canvas.TopProperty,   new System.Windows.Data.Binding(nameof(ElementViewModelBase.Y)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-        SetBinding(WidthProperty,        new System.Windows.Data.Binding(nameof(ElementViewModelBase.Width)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-        SetBinding(HeightProperty,       new System.Windows.Data.Binding(nameof(ElementViewModelBase.Height)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-        SetBinding(Panel.ZIndexProperty, new System.Windows.Data.Binding(nameof(ElementViewModelBase.ZIndex)));
+        // OneWay: ViewModel is always the source of truth; TwoWay here can cause
+        // an infinite PropertyChanged loop when NaN values enter (NaN != NaN breaks
+        // the equality guard in Set<T>), resulting in a stack overflow.
+        SetBinding(Canvas.LeftProperty,  new System.Windows.Data.Binding(nameof(ElementViewModelBase.X)));
+        SetBinding(Canvas.TopProperty,   new System.Windows.Data.Binding(nameof(ElementViewModelBase.Y)));
+        SetBinding(WidthProperty,        new System.Windows.Data.Binding(nameof(ElementViewModelBase.Width)));
+        SetBinding(HeightProperty,       new System.Windows.Data.Binding(nameof(ElementViewModelBase.Height)));
+        SetBinding(Panel.ZIndexProperty, new System.Windows.Data.Binding(nameof(ElementViewModelBase.EffectiveZIndex)));
 
         Cursor = System.Windows.Input.Cursors.SizeAll;
+        SetBinding(OpacityProperty, new System.Windows.Data.Binding(nameof(ElementViewModelBase.DesignerOpacity)));
+        SetBinding(VisibilityProperty, new System.Windows.Data.Binding(nameof(ElementViewModelBase.DesignerVisibility)));
+
+        // Rotate about the element centre on the canvas, identical to PrintService (render parity).
+        RenderTransformOrigin = new Point(0.5, 0.5);
+        SetBinding(RenderTransformProperty, new System.Windows.Data.Binding(nameof(ElementViewModelBase.RotateTransform)));
+
         Background = Brushes.Transparent;
     }
 
@@ -79,15 +89,20 @@ public class DesignerItem : ContentControl
         var layer = AdornerLayer.GetAdornerLayer(this);
         if (layer == null) return;
         _adorner = new ResizeAdorner(this);
-        _adorner.ResizeCompleted += (s, e) => ResizeCompleted?.Invoke(s, e);
+        // Named handler instead of a lambda so we can actually -= it in DetachAdorner.
+        _adorner.ResizeCompleted += OnAdornerResizeCompleted;
         layer.Add(_adorner);
     }
 
     private void DetachAdorner()
     {
         if (_adorner == null) return;
+        _adorner.ResizeCompleted -= OnAdornerResizeCompleted;
         var layer = AdornerLayer.GetAdornerLayer(this);
         layer?.Remove(_adorner);
         _adorner = null;
     }
+
+    private void OnAdornerResizeCompleted(object? sender, ResizeCompletedArgs e)
+        => ResizeCompleted?.Invoke(sender, e);
 }

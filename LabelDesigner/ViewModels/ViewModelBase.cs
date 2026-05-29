@@ -30,6 +30,9 @@ public class RelayCommand(Action execute, Func<bool>? canExecute = null) : IComm
 
     public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
     public void Execute(object? parameter) => execute();
+
+    /// <summary>Forces any subscribed control to re-evaluate CanExecute now.</summary>
+    public void NotifyCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
 }
 
 public class RelayCommand<T>(Action<T?> execute, Func<T?, bool>? canExecute = null) : ICommand
@@ -42,4 +45,7 @@ public class RelayCommand<T>(Action<T?> execute, Func<T?, bool>? canExecute = nu
 
     public bool CanExecute(object? parameter) => canExecute?.Invoke((T?)parameter) ?? true;
     public void Execute(object? parameter) => execute((T?)parameter);
+
+    /// <summary>Forces any subscribed control to re-evaluate CanExecute now.</summary>
+    public void NotifyCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
 }

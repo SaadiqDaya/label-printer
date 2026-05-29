@@ -21,16 +21,32 @@ public class TemplateService
         Directory.CreateDirectory(directory);
     }
 
+    private static readonly object _ioLock = new();
+
     public void Save(LabelTemplate template, string filePath)
     {
         var json = JsonSerializer.Serialize(template, JsonOptions);
-        File.WriteAllText(filePath, json);
+        lock (_ioLock)
+        {
+            // Atomic write: stage to *.tmp then replace, so a crash mid-write can't corrupt the live file.
+            var dir  = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+            var tmp  = filePath + ".tmp";
+            File.WriteAllText(tmp, json);
+
+            if (File.Exists(filePath))
+                File.Replace(tmp, filePath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            else
+                File.Move(tmp, filePath);
+        }
     }
 
     public LabelTemplate? Load(string filePath)
     {
         if (!File.Exists(filePath)) return null;
-        var json = File.ReadAllText(filePath);
+        string json;
+        lock (_ioLock) { json = File.ReadAllText(filePath); }
         return JsonSerializer.Deserialize<LabelTemplate>(json, JsonOptions);
     }
 

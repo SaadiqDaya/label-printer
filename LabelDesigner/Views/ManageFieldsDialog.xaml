@@ -121,17 +121,10 @@
             <TextBlock Text="Print Qty Column:" VerticalAlignment="Center"
                        Margin="0,0,8,0" FontWeight="SemiBold"/>
             <ComboBox Grid.Column="1" IsEditable="True"
-                      ItemsSource="{Binding AvailableHeaders}"
-                      DisplayMemberPath="Letter"
+                      ItemsSource="{Binding Mappings}"
+                      DisplayMemberPath="FieldName"
                       Text="{Binding PrintQtyColumn, UpdateSourceTrigger=PropertyChanged}"
-                      ToolTip="Column whose value = how many labels to print per row. Leave blank to always print 1.">
-                <ComboBox.ItemContainerStyle>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="ToolTip"  Value="{Binding Header}"/>
-                        <Setter Property="Content"  Value="{Binding Display}"/>
-                    </Style>
-                </ComboBox.ItemContainerStyle>
-            </ComboBox>
+                      ToolTip="Select the field whose value controls how many labels to print per row. Leave blank to always print 1."/>
             <TextBlock Grid.Column="2" Text=" — leave blank to print 1 per row"
                        Foreground="#888" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
         </Grid>

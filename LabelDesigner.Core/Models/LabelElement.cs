@@ -6,13 +6,29 @@ namespace LabelDesigner.Core.Models;
 [JsonDerivedType(typeof(BarcodeElement), "Barcode")]
 [JsonDerivedType(typeof(ImageElement), "Image")]
 [JsonDerivedType(typeof(ShapeElement), "Shape")]
+[JsonDerivedType(typeof(TableElement), "Table")]
 public abstract class LabelElement
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public double X { get; set; }
     public double Y { get; set; }
-    public double Width { get; set; } = 80;
-    public double Height { get; set; } = 20;
+
+    private double _width = 80;
+    /// <summary>Element width in design pixels. Clamped to a positive value.</summary>
+    public double Width
+    {
+        get => _width;
+        set => _width = value > 0 ? value : 1;
+    }
+
+    private double _height = 20;
+    /// <summary>Element height in design pixels. Clamped to a positive value.</summary>
+    public double Height
+    {
+        get => _height;
+        set => _height = value > 0 ? value : 1;
+    }
+
     public int ZIndex { get; set; }
 
     /// <summary>
@@ -20,6 +36,18 @@ public abstract class LabelElement
     /// Syntax: {Field} == "value" | {Field} != "value" | {Field} &gt; 0 | {Field} (non-empty) | !{Field} (empty)
     /// </summary>
     public string? PrintCondition { get; set; }
+
+    /// <summary>Layer this element belongs to. Null = default layer.</summary>
+    public Guid? LayerId { get; set; }
+
+    /// <summary>Background fill behind the element. "Transparent" means no fill.</summary>
+    public string BackgroundColor { get; set; } = "Transparent";
+
+    /// <summary>
+    /// Clockwise rotation in degrees about the element's centre. 0 = upright.
+    /// Applied identically on the design canvas and at print time.
+    /// </summary>
+    public double Rotation { get; set; } = 0;
 
     [JsonIgnore]
     public abstract ElementType Type { get; }
