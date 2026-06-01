@@ -21,7 +21,7 @@ variable data from Excel/CSV, computed data sources, conditional printing, a rea
 | Project | Type | Contents |
 |---|---|---|
 | `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`). No WPF. |
-| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `SerialCounterStore`, `PrintHistoryService`, `AppConfig`, `UserSettings`, `LogService`, importers). |
+| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `SerialCounterStore`, `PrintHistoryService`, `AppConfig`, `UserSettings`, `LogService`, importers). |
 | `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip). |
 
 ## Build, test, run
@@ -71,6 +71,7 @@ safe across machines.
 - **Serials** (`SerialCounterStore`): reserved *before* printing (crash = safe gap, never duplicate), Continuous vs Reset-per-batch, prefix/suffix + base-36; reprints reproduce the exact original IDs.
 - **Output backends:** GDI raster (default, device-DPI barcodes) or native **ZPL** (`ZplRenderer` + `RawPrinter`, opt-in via the printer profile).
 - **Validation is fail-loud:** un-encodable barcodes, invalid/missing required fields, missing images, missing/offline printers, and unreachable shared serial stores all **block the print** with a clear message — never a silent blank or wrong-device print.
+- **Print Station manual entry is type-aware:** each operator field renders the control that fits its `FieldDefinition.DataType` — allowed-values → dropdown, `Date` → calendar picker, `Number` → numeric-only box (see `Behaviors/NumericInput.cs`), else plain text. This is an entry-time guard only; `PrintService.ApplyFormat` + `FieldValidator` remain the formatting/validation authority.
 
 ## Documentation
 

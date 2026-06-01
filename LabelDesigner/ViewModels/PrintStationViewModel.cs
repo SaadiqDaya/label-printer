@@ -3,31 +3,57 @@ using LabelDesigner.Core.Services;
 using LabelDesigner.Services;
 using System.Collections.ObjectModel;
 using System.Drawing.Printing;
+using System.Globalization;
 using System.IO;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace LabelDesigner.ViewModels;
 
-/// <summary>One operator-entered field on the Print Station form (manual-entry mode).</summary>
+/// <summary>One operator-entered field on the Print Station form (manual-entry mode).
+/// The control shown is chosen by precedence: allowed-values → dropdown, else the field's
+/// <see cref="FieldDataType"/> → date picker / numeric box / plain text. Print-time formatting
+/// and validation still apply (see PrintService.ApplyFieldDefs / FieldValidator); typed inputs
+/// just stop bad data from being entered in the first place.</summary>
 public class FieldInputViewModel : ViewModelBase
 {
     public string Name { get; }
     public string Prompt { get; }
     public bool Required { get; }
     public string PromptLabel => Required ? Prompt + " *" : Prompt;
+    public FieldDataType DataType { get; }
 
-    /// <summary>Allowed values → drives a dropdown when present (otherwise a free text box).</summary>
+    /// <summary>Allowed values → drives a dropdown when present (it wins over DataType).</summary>
     public IReadOnlyList<string> AllowedValues { get; }
     public bool HasChoices => AllowedValues.Count > 0;
 
+    // Mutually-exclusive control selectors (exactly one is true). Dropdown wins; then the typed
+    // controls; otherwise a plain text box (covers Text and Barcode types).
+    public bool IsDate   => !HasChoices && DataType == FieldDataType.Date;
+    public bool IsNumber => !HasChoices && DataType == FieldDataType.Number;
+    public bool IsText   => !HasChoices && !IsDate && !IsNumber;
+
     private string _value;
-    public string Value { get => _value; set { if (Set(ref _value, value)) ValueChanged?.Invoke(); } }
+    public string Value
+    {
+        get => _value;
+        set { if (Set(ref _value, value)) { OnPropertyChanged(nameof(DateValue)); ValueChanged?.Invoke(); } }
+    }
     public event Action? ValueChanged;
 
-    public FieldInputViewModel(string name, string prompt, string value, bool required, IReadOnlyList<string> allowedValues)
+    /// <summary>DatePicker binding (round-trips with <see cref="Value"/>). Emits the culture short-date
+    /// string, which PrintService.ApplyFormat re-parses and reformats with the field's Format.</summary>
+    public DateTime? DateValue
     {
-        Name = name; Prompt = prompt; _value = value; Required = required; AllowedValues = allowedValues;
+        get => DateTime.TryParse(_value, out var d) ? d : null;
+        set => Value = value.HasValue ? value.Value.ToString("d", CultureInfo.CurrentCulture) : "";
+    }
+
+    public FieldInputViewModel(string name, string prompt, string value, bool required,
+                               IReadOnlyList<string> allowedValues, FieldDataType dataType)
+    {
+        Name = name; Prompt = prompt; _value = value; Required = required;
+        AllowedValues = allowedValues; DataType = dataType;
     }
 }
 
@@ -167,7 +193,7 @@ public class PrintStationViewModel : ViewModelBase
             if (string.IsNullOrWhiteSpace(f.Name) || computed.Contains(f.Name)) continue;
             var def = f.DefaultValue ?? (_template.TestData.TryGetValue(f.Name, out var v) ? v : "");
             var input = new FieldInputViewModel(f.Name,
-                string.IsNullOrWhiteSpace(f.Prompt) ? f.Name : f.Prompt!, def, f.Required, f.AllowedValues);
+                string.IsNullOrWhiteSpace(f.Prompt) ? f.Name : f.Prompt!, def, f.Required, f.AllowedValues, f.DataType);
             input.ValueChanged += RefreshPreview;
             Inputs.Add(input);
         }

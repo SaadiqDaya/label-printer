@@ -4,10 +4,10 @@
         Title="Label Print Station" Height="740" Width="1120"
         MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterScreen"
-        xmlns:conv="clr-namespace:LabelDesigner.Converters">
+        xmlns:conv="clr-namespace:LabelDesigner.Converters"
+        xmlns:beh="clr-namespace:LabelDesigner.Behaviors">
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
-        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
     </Window.Resources>
 
     <Grid Margin="10">
@@ -100,7 +100,9 @@
                              SelectedIndex="{Binding SelectedRowIndex, Mode=TwoWay}"/>
                 </DockPanel>
 
-                <!-- Manual entry: one input per field (dropdown when the field has allowed values) -->
+                <!-- Manual entry: one input per field. The control matches the field's type —
+                     dropdown for allowed-values, date picker for dates, numeric box for numbers,
+                     plain text otherwise. Exactly one is visible per field. -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding ManualEntry, Converter={StaticResource BoolToVis}}">
                     <ItemsControl ItemsSource="{Binding Inputs}">
@@ -108,8 +110,17 @@
                             <DataTemplate>
                                 <StackPanel Margin="0,0,0,8">
                                     <TextBlock Text="{Binding PromptLabel}" FontWeight="SemiBold"/>
+                                    <!-- plain text -->
                                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
-                                             Visibility="{Binding HasChoices, Converter={StaticResource InvBoolToVis}}"/>
+                                             Visibility="{Binding IsText, Converter={StaticResource BoolToVis}}"/>
+                                    <!-- number: digits only, honours Min/Max at print time -->
+                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                             beh:NumericInput.IsEnabled="True"
+                                             Visibility="{Binding IsNumber, Converter={StaticResource BoolToVis}}"/>
+                                    <!-- date: calendar picker -->
+                                    <DatePicker SelectedDate="{Binding DateValue, UpdateSourceTrigger=PropertyChanged}"
+                                                Visibility="{Binding IsDate, Converter={StaticResource BoolToVis}}"/>
+                                    <!-- allowed values: editable dropdown -->
                                     <ComboBox IsEditable="True" ItemsSource="{Binding AllowedValues}"
                                               Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                                               Visibility="{Binding HasChoices, Converter={StaticResource BoolToVis}}"/>
