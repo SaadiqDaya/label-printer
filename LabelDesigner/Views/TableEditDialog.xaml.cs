@@ -7,15 +7,16 @@ using System.Windows.Data;
 namespace LabelDesigner.Views;
 
 /// <summary>
-/// Spreadsheet-style editor for a table element's row data, opened by double-clicking the table on
-/// the canvas. One DataGrid column per table column; cells bind by index into a string[] per row,
-/// so any header text is safe. OK writes the rows back to the TableElementViewModel.
+/// Spreadsheet-style editor for a table element's data, opened by double-clicking the table on the
+/// canvas. One DataGrid column per table column; cells bind by index into a string[] per row, so any
+/// header text is safe. Rows AND columns can be added/removed; OK writes everything back to the
+/// TableElementViewModel (new columns get default headers — rename them in the Properties panel).
 /// </summary>
 public partial class TableEditDialog : Window
 {
     private readonly TableElementViewModel _vm;
     private readonly ObservableCollection<string[]> _rows = new();
-    private readonly int _colCount;
+    private int _colCount;
 
     public TableEditDialog(TableElementViewModel vm)
     {
@@ -24,15 +25,7 @@ public partial class TableEditDialog : Window
         _colCount = vm.Columns.Count;
 
         for (int c = 0; c < _colCount; c++)
-        {
-            var header = string.IsNullOrWhiteSpace(vm.Columns[c].Header) ? $"Column {c + 1}" : vm.Columns[c].Header;
-            EditGrid.Columns.Add(new DataGridTextColumn
-            {
-                Header  = new TextBlock { Text = header },   // TextBlock so underscores aren't access keys
-                Binding = new Binding($"[{c}]") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus },
-                Width   = new DataGridLength(1, DataGridLengthUnitType.Star)
-            });
-        }
+            EditGrid.Columns.Add(MakeColumn(vm.Columns[c].Header, c));
 
         foreach (var row in vm.Rows)
         {
@@ -41,32 +34,87 @@ public partial class TableEditDialog : Window
                 arr[c] = c < row.Cells.Count ? row.Cells[c].Value : "";
             _rows.Add(arr);
         }
-        if (_rows.Count == 0) _rows.Add(new string[_colCount]);   // always at least one row to type into
+        if (_rows.Count == 0) _rows.Add(NewRow());   // always at least one row to type into
 
         EditGrid.ItemsSource = _rows;
     }
 
-    private void AddRow_Click(object sender, RoutedEventArgs e)
+    private static DataGridTextColumn MakeColumn(string header, int index) => new()
+    {
+        // TextBlock header so underscores aren't access keys.
+        Header  = new TextBlock { Text = string.IsNullOrWhiteSpace(header) ? $"Column {index + 1}" : header },
+        Binding = new Binding($"[{index}]") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus },
+        Width   = new DataGridLength(1, DataGridLengthUnitType.Star)
+    };
+
+    private string[] NewRow()
     {
         var arr = new string[_colCount];
         Array.Fill(arr, "");
-        _rows.Add(arr);
+        return arr;
+    }
+
+    private void CommitPendingEdits()
+    {
+        EditGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        EditGrid.CommitEdit(DataGridEditingUnit.Row, true);
+    }
+
+    private void AddRow_Click(object sender, RoutedEventArgs e)
+    {
+        CommitPendingEdits();
+        _rows.Add(NewRow());
     }
 
     private void RemoveRow_Click(object sender, RoutedEventArgs e)
     {
         if (_rows.Count == 0) return;
+        CommitPendingEdits();
         var idx = EditGrid.SelectedIndex >= 0 && EditGrid.SelectedIndex < _rows.Count
             ? EditGrid.SelectedIndex
             : _rows.Count - 1;
         _rows.RemoveAt(idx);
     }
 
+    private void AddColumn_Click(object sender, RoutedEventArgs e)
+    {
+        CommitPendingEdits();
+        _colCount++;
+        EditGrid.Columns.Add(MakeColumn($"Column {_colCount}", _colCount - 1));
+        ResizeAllRows();
+    }
+
+    private void RemoveColumn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_colCount <= 1) return;   // a table always keeps at least one column
+        CommitPendingEdits();
+        _colCount--;
+        EditGrid.Columns.RemoveAt(EditGrid.Columns.Count - 1);
+        ResizeAllRows();
+    }
+
+    /// <summary>Re-shapes every row's value array to the current column count (replacing the item
+    /// raises a collection Replace, which refreshes the DataGrid's cell bindings).</summary>
+    private void ResizeAllRows()
+    {
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            var resized = NewRow();
+            var old = _rows[i];
+            for (int c = 0; c < Math.Min(old.Length, resized.Length); c++)
+                resized[c] = old[c] ?? "";
+            _rows[i] = resized;
+        }
+    }
+
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
-        // Commit a cell that's still in edit mode before reading the rows back.
-        EditGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-        EditGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        CommitPendingEdits();
+
+        // Sync the column COUNT through the VM's own commands (they keep canvas rows in step).
+        // Headers/bound fields/widths of surviving columns are untouched; new ones get defaults.
+        while (_vm.Columns.Count < _colCount) _vm.AddColumnCommand.Execute(null);
+        while (_vm.Columns.Count > _colCount && _vm.Columns.Count > 1) _vm.RemoveColumnCommand.Execute(null);
 
         _vm.Rows.Clear();
         foreach (var arr in _rows)

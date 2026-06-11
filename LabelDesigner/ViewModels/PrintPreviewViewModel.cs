@@ -7,6 +7,19 @@ using System.Windows.Media.Imaging;
 
 namespace LabelDesigner.ViewModels;
 
+/// <summary>One row of the print-preview job list: thumbnail on the left, quantity on the right.</summary>
+public class JobPreviewItem : ViewModelBase
+{
+    private BitmapSource? _thumbnail;
+
+    /// <summary>Position within the JOB (rows that will actually print), 0-based.</summary>
+    public int Index { get; init; }
+    public int Qty { get; init; }
+    public string Caption => $"{Index + 1}.";
+    public string QtyText => $"×{Qty}";
+    public BitmapSource? Thumbnail { get => _thumbnail; set => Set(ref _thumbnail, value); }
+}
+
 public class PrintPreviewViewModel : ViewModelBase
 {
     /// <summary>Render DPI for the preview bitmap — 2× screen so barcodes and text stay sharp.</summary>
@@ -120,6 +133,44 @@ public class PrintPreviewViewModel : ViewModelBase
     /// <summary>True when the preview can step through multiple job records.</summary>
     public bool CanNavigatePreview => _printAllRecords && _jobRows.Count > 1;
 
+    /// <summary>The job list shown left of the preview — one entry per record that will print,
+    /// with a thumbnail and its quantity. Clicking an entry shows it in the big preview.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<JobPreviewItem> JobItems { get; } = new();
+
+    /// <summary>Show the job list only when printing all records (it IS the job).</summary>
+    public bool ShowJobList => _printAllRecords && JobItems.Count > 0;
+
+    private bool _syncingSelection;
+    private JobPreviewItem? _selectedJobItem;
+    public JobPreviewItem? SelectedJobItem
+    {
+        get => _selectedJobItem;
+        set
+        {
+            if (!Set(ref _selectedJobItem, value) || _syncingSelection || value == null) return;
+            _previewIndex = value.Index;
+            RefreshPreview();
+        }
+    }
+
+    /// <summary>Renders the job thumbnails one per dispatcher pass so the window opens instantly
+    /// even for large jobs. Runs on the UI thread (label rendering needs the STA).</summary>
+    private void RenderThumbnailsLazily()
+    {
+        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        int i = 0;
+        void Step()
+        {
+            if (i >= JobItems.Count) return;
+            var item = JobItems[i];
+            try { item.Thumbnail = PrintService.RenderPreview(_template, _jobRows[item.Index].Fields, dpi: 48); }
+            catch (Exception ex) { LogService.Warn($"Preview thumbnail {item.Index + 1} failed: {ex.Message}"); }
+            i++;
+            dispatcher.BeginInvoke(Step, System.Windows.Threading.DispatcherPriority.Background);
+        }
+        dispatcher.BeginInvoke(Step, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     public ICommand PrevLabelCommand => new RelayCommand(
         () => { _previewIndex--; RefreshPreview(); },
         () => CanNavigatePreview && _previewIndex > 0);
@@ -142,8 +193,19 @@ public class PrintPreviewViewModel : ViewModelBase
             // A render hiccup must not kill the preview window — the operator can still print/cancel.
             LogService.Error("Print preview render failed.", ex);
         }
+
+        // Keep the job list's highlight in step with the big preview (arrows or list clicks alike).
+        _syncingSelection = true;
+        try
+        {
+            _selectedJobItem = _printAllRecords && _previewIndex < JobItems.Count ? JobItems[_previewIndex] : null;
+            OnPropertyChanged(nameof(SelectedJobItem));
+        }
+        finally { _syncingSelection = false; }
+
         OnPropertyChanged(nameof(PreviewInfo));
         OnPropertyChanged(nameof(CanNavigatePreview));
+        OnPropertyChanged(nameof(ShowJobList));
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -220,7 +282,11 @@ public class PrintPreviewViewModel : ViewModelBase
                 ?? "";
         }
 
+        for (int i = 0; i < _jobRows.Count; i++)
+            JobItems.Add(new JobPreviewItem { Index = i, Qty = _jobRows[i].PrintQty });
+
         RefreshPreview();
+        if (JobItems.Count > 0) RenderThumbnailsLazily();
 
         if (autoprint) PrintDirect();
     }

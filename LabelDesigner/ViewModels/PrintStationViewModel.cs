@@ -290,6 +290,27 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
     public ICommand PrintJobCommand      => new RelayCommand(PrintJob, () => SelectedJob != null);
     public ICommand RejectJobCommand     => new RelayCommand(RejectJob, () => SelectedJob != null);
     public ICommand CloseJobCommand      => new RelayCommand(() => SelectedJob = null, () => SelectedJob != null);
+    public ICommand OpenTemplatesFolderCommand => new RelayCommand(OpenTemplatesFolder);
+
+    /// <summary>Where this station reads its .lbl templates from (shown in the empty-list help).</summary>
+    public string TemplatesDir => AppConfig.TemplatesDir;
+
+    /// <summary>True when no .lbl files were found — drives the "where do templates come from" hint.</summary>
+    public bool HasNoTemplates => AllTemplates.Count == 0;
+
+    private void OpenTemplatesFolder()
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(AppConfig.TemplatesDir);
+            System.Diagnostics.Process.Start("explorer.exe", AppConfig.TemplatesDir);
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Could not open templates folder.", ex);
+            Status = $"Could not open templates folder: {ex.Message}";
+        }
+    }
 
     public int SelectedRowIndex
     {
@@ -392,6 +413,9 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
             if (t != null) AllTemplates.Add(new TemplateListItem(t.Name, path));
         }
         ApplyFilter();
+        OnPropertyChanged(nameof(HasNoTemplates));
+        if (HasNoTemplates)
+            Status = $"No templates found in {AppConfig.TemplatesDir} — save them there from the Designer.";
     }
 
     private void ApplyFilter()

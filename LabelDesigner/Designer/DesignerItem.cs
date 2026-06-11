@@ -12,7 +12,7 @@ namespace LabelDesigner.Designer;
 /// </summary>
 public class DesignerItem : ContentControl
 {
-    private ResizeAdorner? _adorner;
+    private Adorner? _adorner;   // ResizeAdorner for boxes, LineEndpointAdorner for lines
 
     public static readonly DependencyProperty IsSelectedProperty =
         DependencyProperty.Register(nameof(IsSelected), typeof(bool), typeof(DesignerItem),
@@ -31,6 +31,10 @@ public class DesignerItem : ContentControl
     /// Subscribed to by DesignerCanvas.
     /// </summary>
     public event EventHandler<ResizeCompletedArgs>? ResizeCompleted;
+
+    /// <summary>Raised when a LINE endpoint drag completes (lines use endpoint handles, not the
+    /// resize box). Subscribed to by DesignerCanvas for undo.</summary>
+    public event EventHandler<LineEndpointsChangedArgs>? LineEndpointsChanged;
 
     private static void OnIsSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -70,13 +74,23 @@ public class DesignerItem : ContentControl
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(ElementViewModelBase.IsLocked)) return;
-        if (IsSelected)
+        if (e.PropertyName == nameof(ElementViewModelBase.IsLocked))
         {
-            if (ViewModel.IsLocked) DetachAdorner();
-            else AttachAdorner();
+            if (IsSelected)
+            {
+                if (ViewModel.IsLocked) DetachAdorner();
+                else AttachAdorner();
+            }
+            InvalidateVisual();
+            return;
         }
-        InvalidateVisual();
+
+        // Changing a shape between Line and box types swaps which adorner is appropriate.
+        if (e.PropertyName == nameof(ShapeElementViewModel.ShapeType) && IsSelected)
+        {
+            DetachAdorner();
+            if (!ViewModel.IsLocked) AttachAdorner();
+        }
     }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -105,16 +119,32 @@ public class DesignerItem : ContentControl
         if (_adorner != null) return;
         var layer = AdornerLayer.GetAdornerLayer(this);
         if (layer == null) return;
-        _adorner = new ResizeAdorner(this);
-        // Named handler instead of a lambda so we can actually -= it in DetachAdorner.
-        _adorner.ResizeCompleted += OnAdornerResizeCompleted;
+
+        // Lines get endpoint handles (drag either end anywhere, all four quadrants);
+        // every other element gets the 8-handle resize box.
+        if (ViewModel is ShapeElementViewModel { ShapeType: Core.Models.ShapeType.Line })
+        {
+            var la = new LineEndpointAdorner(this);
+            la.MoveCompleted += OnAdornerLineMoveCompleted;   // named handlers so DetachAdorner can -=
+            _adorner = la;
+        }
+        else
+        {
+            var ra = new ResizeAdorner(this);
+            ra.ResizeCompleted += OnAdornerResizeCompleted;
+            _adorner = ra;
+        }
         layer.Add(_adorner);
     }
 
     private void DetachAdorner()
     {
         if (_adorner == null) return;
-        _adorner.ResizeCompleted -= OnAdornerResizeCompleted;
+        switch (_adorner)
+        {
+            case ResizeAdorner ra:       ra.ResizeCompleted -= OnAdornerResizeCompleted;   break;
+            case LineEndpointAdorner la: la.MoveCompleted   -= OnAdornerLineMoveCompleted; break;
+        }
         var layer = AdornerLayer.GetAdornerLayer(this);
         layer?.Remove(_adorner);
         _adorner = null;
@@ -122,4 +152,7 @@ public class DesignerItem : ContentControl
 
     private void OnAdornerResizeCompleted(object? sender, ResizeCompletedArgs e)
         => ResizeCompleted?.Invoke(sender, e);
+
+    private void OnAdornerLineMoveCompleted(object? sender, LineEndpointsChangedArgs e)
+        => LineEndpointsChanged?.Invoke(sender, e);
 }

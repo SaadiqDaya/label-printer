@@ -36,6 +36,16 @@ internal sealed class CompositeAction(IReadOnlyList<IUndoAction> actions) : IUnd
     public void Redo() { foreach (var a in actions) a.Redo(); }
 }
 
+/// <summary>Undo/redo for a line-endpoint drag — restores the bounding box AND the diagonal
+/// direction flag (a plain ResizeAction can't bring LineReverseY back).</summary>
+internal sealed class LineEndpointsAction(ShapeElementViewModel vm,
+    double ox, double oy, double ow, double oh, bool orev,
+    double nx, double ny, double nw, double nh, bool nrev) : IUndoAction
+{
+    public void Undo() { vm.X = ox; vm.Y = oy; vm.Width = ow; vm.Height = oh; vm.LineReverseY = orev; }
+    public void Redo() { vm.X = nx; vm.Y = ny; vm.Width = nw; vm.Height = nh; vm.LineReverseY = nrev; }
+}
+
 /// <summary>Undo/redo for Group (newId = the new group) and Ungroup (newId = null).</summary>
 internal sealed class GroupAction(IReadOnlyDictionary<ElementViewModelBase, Guid?> oldIds, Guid? newId) : IUndoAction
 {

@@ -23,7 +23,9 @@ public static class DataSourceResolver
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var ds in sources)
         {
-            if (string.IsNullOrWhiteSpace(ds.Name) || ds.Type == DataSourceType.Formula) continue;
+            // Formula and DatabaseField are row-dependent — resolved later by ApplyDerived.
+            if (string.IsNullOrWhiteSpace(ds.Name) ||
+                ds.Type is DataSourceType.Formula or DataSourceType.DatabaseField) continue;
             // For display/preview, serial shows its configured start (no persistence lookup).
             result[ds.Name] = Format(ds, ds.SerialStart);
         }
@@ -41,7 +43,8 @@ public static class DataSourceResolver
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var ds in template.DataSources)
         {
-            if (string.IsNullOrWhiteSpace(ds.Name) || ds.Type == DataSourceType.Formula) continue;
+            if (string.IsNullOrWhiteSpace(ds.Name) ||
+                ds.Type is DataSourceType.Formula or DataSourceType.DatabaseField) continue;
             // Prefer the batch's reserved base (so all copies use one atomically-reserved range);
             // fall back to the live persisted base for preview/validation callers.
             long baseVal = reservedBases != null && reservedBases.TryGetValue(ds.Id, out var rb)
@@ -63,22 +66,34 @@ public static class DataSourceResolver
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var ds in template.DataSources)
         {
-            if (string.IsNullOrWhiteSpace(ds.Name) || ds.Type == DataSourceType.Serial || ds.Type == DataSourceType.Formula) continue;
+            if (string.IsNullOrWhiteSpace(ds.Name) ||
+                ds.Type is DataSourceType.Serial or DataSourceType.Formula or DataSourceType.DatabaseField) continue;
             result[ds.Name] = Format(ds, 0);
         }
         return result;
     }
 
     /// <summary>
-    /// Evaluates Formula sources against the supplied field dict (row fields, computed sources and
-    /// field defaults must already be present). Call this LAST when building a label's fields.
+    /// Resolves the ROW-DEPENDENT sources against the supplied field dict (row fields, computed
+    /// sources and field defaults must already be present). Call this LAST when building a label's
+    /// fields. DatabaseField sources are applied first (they just mirror a column under the
+    /// source's name), then Formulas — so a formula can reference a DatabaseField source.
     /// </summary>
-    public static void ApplyFormulas(IEnumerable<DataSourceDefinition> sources, Dictionary<string, string> fields)
+    public static void ApplyDerived(IEnumerable<DataSourceDefinition> sources, Dictionary<string, string> fields)
     {
-        foreach (var ds in sources)
+        var list = sources as IReadOnlyCollection<DataSourceDefinition> ?? sources.ToList();
+        foreach (var ds in list)
+            if (ds.Type == DataSourceType.DatabaseField && !string.IsNullOrWhiteSpace(ds.Name))
+                fields[ds.Name] = !string.IsNullOrWhiteSpace(ds.SourceField) &&
+                                  fields.TryGetValue(ds.SourceField, out var v) ? v : "";
+        foreach (var ds in list)
             if (ds.Type == DataSourceType.Formula && !string.IsNullOrWhiteSpace(ds.Name))
                 fields[ds.Name] = FormulaEvaluator.Evaluate(ds.FormulaExpression, fields);
     }
+
+    /// <summary>Old name kept for callers/tests that predate DatabaseField sources.</summary>
+    public static void ApplyFormulas(IEnumerable<DataSourceDefinition> sources, Dictionary<string, string> fields)
+        => ApplyDerived(sources, fields);
 
     private static string Format(DataSourceDefinition ds, long serialValue)
     {

@@ -22,11 +22,30 @@
             <TabItem Header="Templates">
                 <DockPanel Margin="4">
                     <DockPanel DockPanel.Dock="Top" Margin="0,4,0,6">
+                        <Button DockPanel.Dock="Right" Content="📂" Width="30" Margin="4,0,0,0"
+                                Command="{Binding OpenTemplatesFolderCommand}"
+                                ToolTip="{Binding TemplatesDir, StringFormat=Open the templates folder: {0}}"/>
                         <Button DockPanel.Dock="Right" Content="⟳" Width="30" Margin="6,0,0,0"
-                                Command="{Binding RefreshCommand}" ToolTip="Refresh template list"/>
+                                Command="{Binding RefreshCommand}"
+                                ToolTip="Refresh template list (picks up newly saved .lbl files)"/>
                         <TextBox VerticalContentAlignment="Center"
-                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Type to filter templates by name"/>
                     </DockPanel>
+                    <!-- Empty-state help: tell the operator/IT exactly where templates come from. -->
+                    <Border DockPanel.Dock="Top" Background="#FFF8E1" BorderBrush="#E6C200" BorderThickness="1"
+                            Padding="8" Margin="0,0,0,6"
+                            Visibility="{Binding HasNoTemplates, Converter={StaticResource BoolToVis}}">
+                        <TextBlock TextWrapping="Wrap" FontSize="11">
+                            <Run Text="No templates found."/>
+                            <LineBreak/><LineBreak/>
+                            <Run Text="Templates are .lbl files in:"/>
+                            <LineBreak/>
+                            <Run Text="{Binding TemplatesDir, Mode=OneWay}" FontWeight="SemiBold"/>
+                            <LineBreak/><LineBreak/>
+                            <Run Text="Design and SAVE them there in the Designer (LabelDesigner.exe without --operator), or have IT point every station at one shared templates folder. Then press ⟳."/>
+                        </TextBlock>
+                    </Border>
                     <ListBox ItemsSource="{Binding Templates}"
                              SelectedItem="{Binding SelectedTemplate}"
                              DisplayMemberPath="Name"/>

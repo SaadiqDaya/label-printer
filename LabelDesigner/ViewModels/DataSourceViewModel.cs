@@ -24,6 +24,7 @@ public class DataSourceViewModel : ViewModelBase
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsSerial));
             OnPropertyChanged(nameof(IsFormula));
+            OnPropertyChanged(nameof(IsDatabaseField));
             // Reset format to a sensible default for the new type
             if (string.IsNullOrWhiteSpace(Format) || IsDefaultFormat(Format))
                 Format = DefaultFormat(value);
@@ -116,6 +117,16 @@ public class DataSourceViewModel : ViewModelBase
     /// <summary>True when this source is a Formula — used to show/hide the expression editor.</summary>
     public bool IsFormula => _model.Type == DataSourceType.Formula;
 
+    /// <summary>Column of the connected data file mirrored when Type == DatabaseField.</summary>
+    public string SourceField
+    {
+        get => _model.SourceField;
+        set { if (_model.SourceField != value) { _model.SourceField = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>True when this source mirrors a data-file column — shows the Source Column picker.</summary>
+    public bool IsDatabaseField => _model.Type == DataSourceType.DatabaseField;
+
     public string DisplayName => $"{Name} ({Type})";
 
     public DataSourceDefinition ToModel() => _model;
@@ -126,10 +137,11 @@ public class DataSourceViewModel : ViewModelBase
 
     private static string DefaultFormat(DataSourceType t) => t switch
     {
-        DataSourceType.CurrentTime  => "HH:mm",
-        DataSourceType.Serial       => "D4",
-        DataSourceType.FixedValue   => "",
-        _                           => "dd/MM/yyyy"
+        DataSourceType.CurrentTime   => "HH:mm",
+        DataSourceType.Serial        => "D4",
+        DataSourceType.FixedValue    => "",
+        DataSourceType.DatabaseField => "",
+        _                            => "dd/MM/yyyy"
     };
 
     private static bool IsDefaultFormat(string f) =>

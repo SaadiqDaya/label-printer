@@ -7,7 +7,8 @@ public enum DataSourceType
     RelativeDate,  // Today + RelativeMonths months + RelativeDays days
     Serial,        // User-set counter (shown as SerialStart, user resets manually)
     FixedValue,    // Always outputs the FixedValue string unchanged
-    Formula        // Evaluates FormulaExpression against the other fields/sources
+    Formula,       // Evaluates FormulaExpression against the other fields/sources
+    DatabaseField  // Mirrors a COLUMN of the connected data file (SourceField) under this name
 }
 
 /// <summary>How a Serial source behaves across print jobs.</summary>
@@ -50,4 +51,11 @@ public class DataSourceDefinition
     public string FixedValue    { get; set; } = "";
     /// <summary>Expression evaluated against other fields when Type == Formula, e.g. UPPER({sku}) &amp; "-" &amp; {lot}.</summary>
     public string FormulaExpression { get; set; } = "";
+
+    /// <summary>
+    /// Column/field of the connected data file mirrored when Type == DatabaseField. Elements bind to
+    /// this source's NAME, so when the data file's column changes you re-point ONE source instead of
+    /// editing every element that uses it.
+    /// </summary>
+    public string SourceField { get; set; } = "";
 }

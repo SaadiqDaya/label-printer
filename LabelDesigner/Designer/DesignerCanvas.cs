@@ -211,6 +211,16 @@ public class DesignerCanvas : Canvas
         item.MouseMove        -= Item_MouseMove;
         item.MouseUp          -= Item_MouseUp;
         item.ResizeCompleted  -= Item_ResizeCompleted;
+        item.LineEndpointsChanged -= Item_LineEndpointsChanged;
+    }
+
+    private void Item_LineEndpointsChanged(object? sender, LineEndpointsChangedArgs args)
+    {
+        if (DataContext is DesignerViewModel designer)
+            designer.UndoManager.Push(new LineEndpointsAction(
+                args.Vm,
+                args.OldX, args.OldY, args.OldW, args.OldH, args.OldReverseY,
+                args.Vm.X, args.Vm.Y, args.Vm.Width, args.Vm.Height, args.Vm.LineReverseY));
     }
 
     private void Item_ResizeCompleted(object? sender, ResizeCompletedArgs args)
@@ -514,6 +524,7 @@ public class DesignerCanvas : Canvas
         item.MouseMove        += Item_MouseMove;
         item.MouseUp          += Item_MouseUp;
         item.ResizeCompleted  += Item_ResizeCompleted;
+        item.LineEndpointsChanged += Item_LineEndpointsChanged;
 
         Focusable = true;
         return item;
@@ -712,12 +723,12 @@ public class DesignerCanvas : Canvas
     // ─── View builders ──────────────────────────────────────────────────────
     private static UIElement BuildTextView(TextElementViewModel vm)
     {
-        static System.Windows.Controls.TextBlock MakeTextBlock(TextElementViewModel vm)
+        static System.Windows.Controls.TextBlock MakeTextBlock(TextElementViewModel vm, string fontSizePath)
         {
             var tb = new System.Windows.Controls.TextBlock();
             tb.SetBinding(System.Windows.Controls.TextBlock.TextProperty,          new System.Windows.Data.Binding(nameof(TextElementViewModel.PreviewText)));
             tb.SetBinding(System.Windows.Controls.TextBlock.FontFamilyProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontFamily)) { Converter = new Converters.StringToFontFamilyConverter() });
-            tb.SetBinding(System.Windows.Controls.TextBlock.FontSizeProperty,      new System.Windows.Data.Binding(nameof(TextElementViewModel.FontSize)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.FontSizeProperty,      new System.Windows.Data.Binding(fontSizePath));
             tb.SetBinding(System.Windows.Controls.TextBlock.FontWeightProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontWeightValue)));
             tb.SetBinding(System.Windows.Controls.TextBlock.FontStyleProperty,     new System.Windows.Data.Binding(nameof(TextElementViewModel.FontStyleValue)));
             tb.SetBinding(System.Windows.Controls.TextBlock.ForegroundProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.ForegroundBrush)));
@@ -731,12 +742,14 @@ public class DesignerCanvas : Canvas
         // a plain TextBlock constrained by the element box — wraps multi-line text exactly like the
         // printed output — and a Viewbox-scaled copy for single-line FitToBox. The old single-Viewbox
         // approach could never wrap (a Viewbox measures its child with infinite width).
-        var plain = MakeTextBlock(vm);
+        // Plain block uses EffectiveFontSize so multi-line FitToBox re-fits live (like print);
+        // the Viewbox copy scales geometrically, so the declared FontSize is fine there.
+        var plain = MakeTextBlock(vm, nameof(TextElementViewModel.EffectiveFontSize));
         plain.SetBinding(UIElement.VisibilityProperty,
             new System.Windows.Data.Binding(nameof(TextElementViewModel.PlainTextVisibility)));
 
         var vb = new System.Windows.Controls.Viewbox { Stretch = Stretch.Uniform, DataContext = vm };
-        vb.Child = MakeTextBlock(vm);
+        vb.Child = MakeTextBlock(vm, nameof(TextElementViewModel.FontSize));
         vb.SetBinding(UIElement.VisibilityProperty,
             new System.Windows.Data.Binding(nameof(TextElementViewModel.FitViewboxVisibility)));
 

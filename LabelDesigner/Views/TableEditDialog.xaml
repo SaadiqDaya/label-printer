@@ -7,7 +7,7 @@
         ShowInTaskbar="False">
     <DockPanel Margin="10">
         <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" FontSize="11" Foreground="#666" TextWrapping="Wrap"
-                   Text="Click a cell and type to edit. Columns (headers, bound fields, widths) are managed in the Properties panel."/>
+                   Text="Click a cell and type to edit. + Col / − Col change the columns; rename a column (and set its bound field / width) in the Properties panel."/>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -17,8 +17,12 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <Button Content="+ Row" Padding="10,3" Margin="0,0,6,0" Click="AddRow_Click"/>
-                <Button Content="− Row" Padding="10,3" Click="RemoveRow_Click"
+                <Button Content="− Row" Padding="10,3" Margin="0,0,14,0" Click="RemoveRow_Click"
                         ToolTip="Removes the selected row (or the last row)"/>
+                <Button Content="+ Col" Padding="10,3" Margin="0,0,6,0" Click="AddColumn_Click"
+                        ToolTip="Adds a column (rename it in the Properties panel afterwards)"/>
+                <Button Content="− Col" Padding="10,3" Click="RemoveColumn_Click"
+                        ToolTip="Removes the last column"/>
             </StackPanel>
         </DockPanel>
 

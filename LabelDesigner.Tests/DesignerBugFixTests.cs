@@ -97,6 +97,74 @@ public class PrintPreviewJobNavigationTests
     }
 }
 
+public class DatabaseFieldSourceTests
+{
+    private static Core.Models.DataSourceDefinition DbField(string name, string sourceColumn) => new()
+    {
+        Name = name,
+        Type = Core.Models.DataSourceType.DatabaseField,
+        SourceField = sourceColumn
+    };
+
+    [Fact]
+    public void DatabaseField_MirrorsTheMappedColumn()
+    {
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Item Description (EN)"] = "Mint 50ml"
+        };
+        Helpers.DataSourceResolver.ApplyDerived(new[] { DbField("ProductName", "Item Description (EN)") }, fields);
+        Assert.Equal("Mint 50ml", fields["ProductName"]);
+    }
+
+    [Fact]
+    public void RePointingTheSource_FollowsTheNewColumn()
+    {
+        // The whole point: when the data file changes, fix the mapping ONCE — elements
+        // bound to "ProductName" follow without being touched.
+        var ds = DbField("ProductName", "OldColumn");
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["OldColumn"] = "from old", ["NewColumn"] = "from new"
+        };
+        Helpers.DataSourceResolver.ApplyDerived(new[] { ds }, fields);
+        Assert.Equal("from old", fields["ProductName"]);
+
+        ds.SourceField = "NewColumn";
+        Helpers.DataSourceResolver.ApplyDerived(new[] { ds }, fields);
+        Assert.Equal("from new", fields["ProductName"]);
+    }
+
+    [Fact]
+    public void MissingColumn_ResolvesEmpty_NeverThrows()
+    {
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Helpers.DataSourceResolver.ApplyDerived(new[] { DbField("X", "NoSuchColumn") }, fields);
+        Assert.Equal("", fields["X"]);
+    }
+
+    [Fact]
+    public void Formulas_CanReferenceDatabaseFieldSources()
+    {
+        var sources = new Core.Models.DataSourceDefinition[]
+        {
+            DbField("Prod", "Col A"),
+            new() { Name = "Label", Type = Core.Models.DataSourceType.Formula, FormulaExpression = "UPPER({Prod})" }
+        };
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Col A"] = "mint" };
+        Helpers.DataSourceResolver.ApplyDerived(sources, fields);
+        Assert.Equal("MINT", fields["Label"]);
+    }
+
+    [Fact]
+    public void StaticResolve_SkipsDatabaseFields()
+    {
+        // DatabaseField needs row data; the row-independent Resolve must not emit a bogus value.
+        var resolved = Helpers.DataSourceResolver.Resolve(new[] { DbField("ProductName", "Col") });
+        Assert.False(resolved.ContainsKey("ProductName"));
+    }
+}
+
 public class TableRowEditingTests
 {
     [Fact]

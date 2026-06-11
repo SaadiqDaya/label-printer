@@ -354,6 +354,18 @@
                                           ItemsSource="{Binding Source={x:Static vm:DataSourceViewModel.AllTypes}}"
                                           Margin="0,0,0,4"/>
 
+                                <!-- Source Column (only for DatabaseField) -->
+                                <TextBlock Text="Source Column" FontSize="10" Foreground="#555" Margin="0,0,0,1"
+                                           Visibility="{Binding IsDatabaseField, Converter={StaticResource BoolToVisibility}}"/>
+                                <ComboBox IsEditable="True" Margin="0,0,0,2"
+                                          Visibility="{Binding IsDatabaseField, Converter={StaticResource BoolToVisibility}}"
+                                          ItemsSource="{Binding DataContext.Designer.Template.Fields, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          Text="{Binding SourceField, UpdateSourceTrigger=LostFocus}"
+                                          ToolTip="The data-file column this source mirrors. Re-point it here when the file changes — every element bound to this source follows."/>
+                                <TextBlock FontSize="9" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,4"
+                                           Visibility="{Binding IsDatabaseField, Converter={StaticResource BoolToVisibility}}"
+                                           Text="Bind elements to THIS source's name instead of the raw column. If the data file's column changes, fix it once here."/>
+
                                 <!-- Fixed Value input (only shown when Type = FixedValue) -->
                                 <TextBlock Text="Fixed Value" FontSize="10" Foreground="#555" Margin="0,0,0,1">
                                     <TextBlock.Style>

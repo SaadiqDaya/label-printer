@@ -34,7 +34,11 @@ public class TextElementViewModel : ElementViewModelBase
     /// What the canvas shows: substituted with live row data when loaded, otherwise equals Text.
     /// The canvas binds to this; the Properties Panel binds to Text for editing.
     /// </summary>
-    public string PreviewText { get => _previewText; private set => Set(ref _previewText, value); }
+    public string PreviewText
+    {
+        get => _previewText;
+        private set { if (Set(ref _previewText, value)) OnPropertyChanged(nameof(EffectiveFontSize)); }
+    }
 
     public string? BoundField
     {
@@ -64,24 +68,42 @@ public class TextElementViewModel : ElementViewModelBase
             result = result.Replace($"{{{{{key}}}}}", val, StringComparison.OrdinalIgnoreCase);
         PreviewText = result;
     }
-    public string FontFamily { get => _fontFamily; set => Set(ref _fontFamily, value); }
+    public string FontFamily
+    {
+        get => _fontFamily;
+        set { if (Set(ref _fontFamily, value)) OnPropertyChanged(nameof(EffectiveFontSize)); }
+    }
 
     public double FontSize
     {
         get => _fontSize;
-        set => Set(ref _fontSize, Math.Max(6, value));
+        set { if (Set(ref _fontSize, Math.Max(6, value))) OnPropertyChanged(nameof(EffectiveFontSize)); }
     }
 
     public bool Bold
     {
         get => _bold;
-        set { if (Set(ref _bold, value)) OnPropertyChanged(nameof(FontWeightValue)); }
+        set
+        {
+            if (Set(ref _bold, value))
+            {
+                OnPropertyChanged(nameof(FontWeightValue));
+                OnPropertyChanged(nameof(EffectiveFontSize));
+            }
+        }
     }
 
     public bool Italic
     {
         get => _italic;
-        set { if (Set(ref _italic, value)) OnPropertyChanged(nameof(FontStyleValue)); }
+        set
+        {
+            if (Set(ref _italic, value))
+            {
+                OnPropertyChanged(nameof(FontStyleValue));
+                OnPropertyChanged(nameof(EffectiveFontSize));
+            }
+        }
     }
 
     public bool Underline
@@ -113,6 +135,7 @@ public class TextElementViewModel : ElementViewModelBase
                 OnPropertyChanged(nameof(StretchValue));
                 OnPropertyChanged(nameof(FitViewboxVisibility));
                 OnPropertyChanged(nameof(PlainTextVisibility));
+                OnPropertyChanged(nameof(EffectiveFontSize));
             }
         }
     }
@@ -130,6 +153,7 @@ public class TextElementViewModel : ElementViewModelBase
                 OnPropertyChanged(nameof(StretchValue));
                 OnPropertyChanged(nameof(FitViewboxVisibility));
                 OnPropertyChanged(nameof(PlainTextVisibility));
+                OnPropertyChanged(nameof(EffectiveFontSize));
             }
         }
     }
@@ -145,6 +169,51 @@ public class TextElementViewModel : ElementViewModelBase
 
     public System.Windows.Visibility PlainTextVisibility =>
         (_fitToBox && !_multiLine) ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+
+    /// <summary>
+    /// The font size the canvas actually renders at. For multi-line + FitToBox this is the largest
+    /// size whose wrapped text fits the element box — the SAME binary search the print path runs
+    /// (PrintService.BuildText), so the canvas resizes live as the user resizes the element instead
+    /// of clipping. All other modes render at the declared FontSize.
+    /// </summary>
+    public double EffectiveFontSize
+    {
+        get
+        {
+            if (!_fitToBox || !_multiLine) return _fontSize;
+            try { return ComputeFittedFontSize(); }
+            catch { return _fontSize; }   // measurement needs the WPF text stack; fall back quietly
+        }
+    }
+
+    private double ComputeFittedFontSize()
+    {
+        var tb = new System.Windows.Controls.TextBlock
+        {
+            Text         = PreviewText,
+            FontFamily   = new FontFamily(_fontFamily),
+            FontWeight   = FontWeightValue,
+            FontStyle    = FontStyleValue,
+            TextWrapping = TextWrapping.Wrap
+        };
+        double lo = 1, hi = _fontSize * 3 + 1, best = _fontSize;
+        for (int iter = 0; iter < 16; iter++)
+        {
+            double mid = (lo + hi) / 2;
+            tb.FontSize = mid;
+            tb.Measure(new System.Windows.Size(Width, double.PositiveInfinity));
+            if (tb.DesiredSize.Width <= Width && tb.DesiredSize.Height <= Height)
+            { best = mid; lo = mid; }
+            else hi = mid;
+        }
+        return best;
+    }
+
+    protected override void OnDimensionChanged()
+    {
+        base.OnDimensionChanged();
+        OnPropertyChanged(nameof(EffectiveFontSize));   // re-fit when the user resizes the box
+    }
 
     /// <summary>WPF TextWrapping derived from MultiLine.</summary>
     public TextWrapping TextWrappingValue => _multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap;

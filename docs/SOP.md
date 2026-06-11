@@ -155,10 +155,12 @@ All elements share **Position & Size** (X, Y, W, H, Z-order, **Rotation**), an o
 ### 6.4 Shapes
 Rectangle (with corner radius), Ellipse, Line, Triangle, Arrow, Diamond. Set fill colour, stroke colour, and stroke thickness. Lines follow your drag direction.
 
+**Editing a line:** select it — instead of the resize box you get **two endpoint handles**. Drag either end anywhere (all four quadrants) to re-aim the line; drag the line body to move the whole thing.
+
 ### 6.5 Table
 Columns (header + bound field + width), row height, header/cell colours, borders, fonts. Enter static rows, or bind columns to fields for data-driven cells.
 
-**Editing the data:** **double-click the table on the canvas** to open the spreadsheet-style row editor (click a cell and type; + Row / − Row; OK applies). The same rows can also be edited in the Properties panel's **Table Rows** section.
+**Editing the data:** **double-click the table on the canvas** to open the spreadsheet-style editor (click a cell and type; **+ Row / − Row / + Col / − Col**; OK applies). New columns get default names — rename them (and set bound field / width) in the Properties panel, where the same rows can also be edited.
 
 ---
 
@@ -265,6 +267,7 @@ On the **Data Sources** tab, create computed fields that bind to elements just l
 | **Serial** | A counter (see Section 14) |
 | **Fixed Value** | A constant string |
 | **Formula** | A value computed from other fields (see below) |
+| **Database Field** | Mirrors a **column of the connected data file** under this source's name (see 11.2) |
 
 ### 11.1 Formula Fields
 Set the **Formula** expression. Supports:
@@ -280,7 +283,16 @@ LEFT({code}, 3)
 ```
 A formula error shows blank in the preview (it never crashes a print run).
 
-### 11.2 Serial Options
+### 11.2 Database Field sources (indirection that survives data-file changes)
+A **Database Field** source gives a data-file column a stable name of your choosing. Set its **Source Column** to the column it mirrors, then bind elements to the **source's name** instead of the raw column:
+
+- If the data file changes (a column is renamed, or you switch suppliers' spreadsheets), fix the **Source Column once** — every element bound to the source follows automatically.
+- If the same value appears in several places on the label (or on several labels sharing a file), they all update together.
+- Formulas can reference Database Field sources too, so `UPPER({ProductName})` keeps working through a re-mapping.
+
+Elements can still bind **directly** to a raw column when indirection isn't worth it — the Bound Field dropdown lists both the file's fields and all named sources.
+
+### 11.3 Serial Options
 See Section 14 for serial behaviour (continuous vs reset), increment, prefix/suffix, and alphanumeric serials.
 
 ---
@@ -291,7 +303,7 @@ See Section 14 for serial behaviour (continuous vs reset), increment, prefix/suf
 **File ▸ Print** (Ctrl+P) opens the Print Preview window:
 - Choose the **printer** (a Zebra is preferred automatically).
 - Set **quantity**, or use **Print all records** to print every loaded row honouring each row's PrintQty.
-- The preview renders exactly what will print. In **Print all records** mode, use the **◄ ►** arrows (top right) to step through every record **in the job** — rows with PrintQty 0 are excluded, because they won't print.
+- The preview renders exactly what will print. In **Print all records** mode a **job list** appears on the left — every record that will print, with its thumbnail and quantity (×N). Click a row to preview it, or step with the **◄ ►** arrows. Rows with PrintQty 0 are excluded, because they won't print.
 - Click **Print**.
 
 ### 12.2 What's Checked Before Printing
@@ -308,6 +320,8 @@ A row's PrintQty of **0 (or blank) means "skip"** — it is never treated as 1.
 ## 13. The Print Station (Shop Floor)
 
 Launch with the **`--operator`** shortcut. The Print Station is read-only — operators cannot change templates.
+
+> **Where do templates come from?** The list shows every `.lbl` file in the station's **Templates folder** (the 📂 button opens it; the ⟳ button re-scans). Design and **Save** templates there in the Designer, or have IT point every station at one shared templates folder (Section 19.3). A data file loads automatically when the template has a saved data connection — or use **Load file…** for today's file.
 
 ### 13.1 Daily Loop
 1. Type your name in the **Operator** box (it is remembered, and recorded on every print in the history).
