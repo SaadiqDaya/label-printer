@@ -1,4 +1,3 @@
-using LabelDesigner.Services;
 using LabelDesigner.ViewModels;
 using System.Windows;
 
@@ -22,15 +21,11 @@ public partial class PrintPreviewWindow : Window
         _attachedVm = DataContext as PrintPreviewViewModel;
         if (_attachedVm == null) return;
 
-        // Render at 2× screen DPI so barcodes and text are sharp
-        const double previewDpi = 192;
-        var preview = PrintService.RenderPreview(_attachedVm.Template, _attachedVm.Fields, previewDpi);
-
-        // Display at the label's 96-DPI WPF pixel size; Stretch.Fill maps the high-res
-        // bitmap into that space without layout inflation
+        // The VM renders the preview bitmap (Source is bound) — it owns which label is shown so the
+        // operator can step through the actual job. Display at the label's 96-DPI WPF pixel size;
+        // Stretch.Fill maps the high-res bitmap into that space without layout inflation.
         PreviewImage.Width  = _attachedVm.Template.WidthPx;
         PreviewImage.Height = _attachedVm.Template.HeightPx;
-        PreviewImage.Source = preview;
 
         _attachedVm.CloseRequested += OnCloseRequested;
     }

@@ -12,7 +12,7 @@
             <Button Content="Close" Width="80" IsCancel="True" Click="Close_Click"/>
         </StackPanel>
         <DataGrid x:Name="RecordsGrid"
-                  AutoGenerateColumns="True"
+                  AutoGenerateColumns="False"
                   IsReadOnly="True"
                   SelectionMode="Single"
                   GridLinesVisibility="Horizontal"

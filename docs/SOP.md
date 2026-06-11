@@ -158,6 +158,8 @@ Rectangle (with corner radius), Ellipse, Line, Triangle, Arrow, Diamond. Set fil
 ### 6.5 Table
 Columns (header + bound field + width), row height, header/cell colours, borders, fonts. Enter static rows, or bind columns to fields for data-driven cells.
 
+**Editing the data:** **double-click the table on the canvas** to open the spreadsheet-style row editor (click a cell and type; + Row / − Row; OK applies). The same rows can also be edited in the Properties panel's **Table Rows** section.
+
 ---
 
 ## 7. Barcodes
@@ -289,7 +291,7 @@ See Section 14 for serial behaviour (continuous vs reset), increment, prefix/suf
 **File ▸ Print** (Ctrl+P) opens the Print Preview window:
 - Choose the **printer** (a Zebra is preferred automatically).
 - Set **quantity**, or use **Print all records** to print every loaded row honouring each row's PrintQty.
-- The preview renders exactly what will print.
+- The preview renders exactly what will print. In **Print all records** mode, use the **◄ ►** arrows (top right) to step through every record **in the job** — rows with PrintQty 0 are excluded, because they won't print.
 - Click **Print**.
 
 ### 12.2 What's Checked Before Printing

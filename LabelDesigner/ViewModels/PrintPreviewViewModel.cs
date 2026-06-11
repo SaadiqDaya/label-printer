@@ -3,14 +3,22 @@ using LabelDesigner.Helpers;
 using LabelDesigner.Services;
 using System.Drawing.Printing;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 namespace LabelDesigner.ViewModels;
 
 public class PrintPreviewViewModel : ViewModelBase
 {
+    /// <summary>Render DPI for the preview bitmap — 2× screen so barcodes and text stay sharp.</summary>
+    private const double PreviewDpi = 192;
+
     private readonly LabelTemplate _template;
     private readonly bool _hasDataFields;
     private readonly IReadOnlyList<ExcelRow>? _allRows;
+    /// <summary>The rows that will ACTUALLY print in all-records mode (PrintQty &gt; 0).</summary>
+    private readonly List<ExcelRow> _jobRows = new();
+    private int _previewIndex;
+    private BitmapSource? _previewImage;
     private string _selectedPrinter;
     private bool _useDataQty;
     private bool _printAllRecords;
@@ -85,9 +93,58 @@ public class PrintPreviewViewModel : ViewModelBase
         get => _printAllRecords;
         set
         {
-            Set(ref _printAllRecords, value);
+            if (Set(ref _printAllRecords, value))
+            {
+                _previewIndex = 0;
+                RefreshPreview();   // switch the preview between the JOB's labels and this record
+            }
             OnPropertyChanged(nameof(PrintButtonLabel));
         }
+    }
+
+    // ─── Job preview (what will actually print) ──────────────────────────────
+    /// <summary>The rendered label the operator is looking at — in all-records mode this walks the
+    /// rows that will actually print (PrintQty &gt; 0), not whatever row the designer happened to show.</summary>
+    public BitmapSource? PreviewImage { get => _previewImage; private set => Set(ref _previewImage, value); }
+
+    public string PreviewInfo
+    {
+        get
+        {
+            if (!_printAllRecords || _allRows == null) return "This record";
+            if (_jobRows.Count == 0) return "Nothing to print — every row has quantity 0";
+            return $"Record {_previewIndex + 1} of {_jobRows.Count} in this job  (×{_jobRows[_previewIndex].PrintQty})";
+        }
+    }
+
+    /// <summary>True when the preview can step through multiple job records.</summary>
+    public bool CanNavigatePreview => _printAllRecords && _jobRows.Count > 1;
+
+    public ICommand PrevLabelCommand => new RelayCommand(
+        () => { _previewIndex--; RefreshPreview(); },
+        () => CanNavigatePreview && _previewIndex > 0);
+
+    public ICommand NextLabelCommand => new RelayCommand(
+        () => { _previewIndex++; RefreshPreview(); },
+        () => CanNavigatePreview && _previewIndex < _jobRows.Count - 1);
+
+    private void RefreshPreview()
+    {
+        try
+        {
+            var fields = _printAllRecords && _jobRows.Count > 0
+                ? _jobRows[_previewIndex].Fields
+                : Fields;
+            PreviewImage = PrintService.RenderPreview(_template, fields, PreviewDpi);
+        }
+        catch (Exception ex)
+        {
+            // A render hiccup must not kill the preview window — the operator can still print/cancel.
+            LogService.Error("Print preview render failed.", ex);
+        }
+        OnPropertyChanged(nameof(PreviewInfo));
+        OnPropertyChanged(nameof(CanNavigatePreview));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     /// <summary>Label shown on the big print button — switches between "Print ×N" and "Print N records".</summary>
@@ -139,6 +196,7 @@ public class PrintPreviewViewModel : ViewModelBase
         DataQty         = dataQty;
         _hasDataFields  = fieldsOverride != null;
         _allRows        = allRows;
+        if (allRows != null) _jobRows.AddRange(allRows.Where(r => r.PrintQty > 0));
         // Default to "Print all records" mode whenever rows were supplied — that's the common case.
         _printAllRecords = allRows != null && allRows.Count > 0;
 
@@ -161,6 +219,8 @@ public class PrintPreviewViewModel : ViewModelBase
                 ?? AvailablePrinters.FirstOrDefault()
                 ?? "";
         }
+
+        RefreshPreview();
 
         if (autoprint) PrintDirect();
     }

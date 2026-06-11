@@ -21,6 +21,7 @@ public partial class MainWindow : Window
 
         // All cross-component event wires use named methods so OnClosed can detach them.
         DesignerView.Canvas.SelectionChanged += OnCanvasSelectionChanged;
+        DesignerView.Canvas.ElementDoubleClicked += OnElementDoubleClicked;
 
         _vm.Designer.ElementAdded    += OnElementAdded;
         _vm.Designer.ElementRemoved  += OnElementRemoved;
@@ -59,6 +60,15 @@ public partial class MainWindow : Window
     // ─── Named handlers (so OnClosed can -= them) ────────────────────────────
     private void OnCanvasSelectionChanged(object? sender, ElementViewModelBase? vm)
         => _vm.Designer.SelectElement(vm);
+
+    private void OnElementDoubleClicked(object? sender, ElementViewModelBase vm)
+    {
+        // Double-clicking a table opens its spreadsheet-style data editor.
+        if (vm is not TableElementViewModel tvm) return;
+        var dlg = new TableEditDialog(tvm) { Owner = this };
+        if (dlg.ShowDialog() == true)
+            _vm.Designer.IsDirty = true;
+    }
 
     private void OnElementAdded(object? sender, ElementViewModelBase vm)
         => DesignerView.Canvas.AddElement(vm);
@@ -150,6 +160,7 @@ public partial class MainWindow : Window
     {
         // Detach in reverse order of attach so the VM/canvas/ipc can be GC'd.
         DesignerView.Canvas.SelectionChanged -= OnCanvasSelectionChanged;
+        DesignerView.Canvas.ElementDoubleClicked -= OnElementDoubleClicked;
         _vm.Designer.ElementAdded    -= OnElementAdded;
         _vm.Designer.ElementRemoved  -= OnElementRemoved;
         _vm.Designer.CanvasCleared   -= OnCanvasCleared;
@@ -166,10 +177,17 @@ public partial class MainWindow : Window
     private void ElementList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_listSelectionChanging) return;
+
+        // Only react to USER clicks in the list. The list's selection also changes as a side effect
+        // of canvas selection (bindings update while the canvas has focus); feeding that back into
+        // SelectByViewModel would collapse a Ctrl-click / rubber-band multi-selection to one item.
+        var lb = (ListBox)sender;
+        if (!lb.IsKeyboardFocusWithin) return;
+
         _listSelectionChanging = true;
         try
         {
-            if (((ListBox)sender).SelectedItem is ElementViewModelBase vm)
+            if (lb.SelectedItem is ElementViewModelBase vm)
                 DesignerView.Canvas.SelectByViewModel(vm);
         }
         finally

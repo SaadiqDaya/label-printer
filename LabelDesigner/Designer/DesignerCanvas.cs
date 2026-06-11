@@ -42,6 +42,9 @@ public class DesignerCanvas : Canvas
 
     public event EventHandler<ElementViewModelBase?>? SelectionChanged;
 
+    /// <summary>Raised when an element is double-clicked (e.g. to open the table data editor).</summary>
+    public event EventHandler<ElementViewModelBase>? ElementDoubleClicked;
+
     public DesignerTool CurrentTool { get; set; } = DesignerTool.Select;
 
     public DesignerItem? SelectedItem
@@ -139,6 +142,9 @@ public class DesignerCanvas : Canvas
         if (DataContext is not DesignerViewModel vm) return;
         vm.SelectedElements.Clear();
         foreach (var i in _selectedItems) vm.SelectedElements.Add(i.ViewModel);
+        // Re-assert every member's IsSelected: setting SelectedItem above ran the VM's single-select
+        // sync (SelectElement), which cleared the flag on all but the primary.
+        foreach (var i in _selectedItems) i.ViewModel.IsSelected = true;
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -222,7 +228,12 @@ public class DesignerCanvas : Canvas
         base.OnMouseDown(e);
 
         // ── Line drawing mode ──────────────────────────────────────────────
-        if (CurrentTool == DesignerTool.DrawLine && e.Source == this && e.LeftButton == MouseButtonState.Pressed)
+        // Accept the press wherever it lands — on bare canvas OR on top of an existing element
+        // (Item_MouseDown defers to us while this tool is active). A real label is mostly covered
+        // by elements, so requiring bare canvas made the tool look broken.
+        if (CurrentTool == DesignerTool.DrawLine &&
+            (e.Source == this || e.Source is DesignerItem) &&
+            e.LeftButton == MouseButtonState.Pressed)
         {
             _lineStart = e.GetPosition(this);
             _drawingLineVm = new ShapeElementViewModel
@@ -511,6 +522,10 @@ public class DesignerCanvas : Canvas
     // ─── Drag-to-move (single or group) ────────────────────────────────────
     private void Item_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        // While the line tool is armed, presses must reach OnMouseDown to start drawing —
+        // never select/drag the element under the cursor.
+        if (CurrentTool == DesignerTool.DrawLine) return;
+
         var item = (DesignerItem)sender;
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
 
@@ -518,6 +533,15 @@ public class DesignerCanvas : Canvas
         {
             ToggleInSelection(item);
             // Ctrl-click should not start a drag — the user is building a selection set.
+            e.Handled = true;
+            return;
+        }
+
+        // Double-click: select and hand off (the table data editor hooks this). No drag.
+        if (e.ClickCount == 2)
+        {
+            if (!_selectedItems.Contains(item)) SelectWithGroup(item);
+            ElementDoubleClicked?.Invoke(this, item.ViewModel);
             e.Handled = true;
             return;
         }
@@ -688,25 +712,38 @@ public class DesignerCanvas : Canvas
     // ─── View builders ──────────────────────────────────────────────────────
     private static UIElement BuildTextView(TextElementViewModel vm)
     {
-        var tb = new System.Windows.Controls.TextBlock();
-        tb.SetBinding(System.Windows.Controls.TextBlock.TextProperty,          new System.Windows.Data.Binding(nameof(TextElementViewModel.PreviewText)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.FontFamilyProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontFamily)) { Converter = new Converters.StringToFontFamilyConverter() });
-        tb.SetBinding(System.Windows.Controls.TextBlock.FontSizeProperty,      new System.Windows.Data.Binding(nameof(TextElementViewModel.FontSize)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.FontWeightProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontWeightValue)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.FontStyleProperty,     new System.Windows.Data.Binding(nameof(TextElementViewModel.FontStyleValue)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.ForegroundProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.ForegroundBrush)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.TextAlignmentProperty, new System.Windows.Data.Binding(nameof(TextElementViewModel.TextAlignmentValue)));
-        tb.SetBinding(System.Windows.Controls.TextBlock.TextWrappingProperty,  new System.Windows.Data.Binding(nameof(TextElementViewModel.TextWrappingValue)));
-        tb.DataContext = vm;
+        static System.Windows.Controls.TextBlock MakeTextBlock(TextElementViewModel vm)
+        {
+            var tb = new System.Windows.Controls.TextBlock();
+            tb.SetBinding(System.Windows.Controls.TextBlock.TextProperty,          new System.Windows.Data.Binding(nameof(TextElementViewModel.PreviewText)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.FontFamilyProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontFamily)) { Converter = new Converters.StringToFontFamilyConverter() });
+            tb.SetBinding(System.Windows.Controls.TextBlock.FontSizeProperty,      new System.Windows.Data.Binding(nameof(TextElementViewModel.FontSize)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.FontWeightProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.FontWeightValue)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.FontStyleProperty,     new System.Windows.Data.Binding(nameof(TextElementViewModel.FontStyleValue)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.ForegroundProperty,    new System.Windows.Data.Binding(nameof(TextElementViewModel.ForegroundBrush)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.TextAlignmentProperty, new System.Windows.Data.Binding(nameof(TextElementViewModel.TextAlignmentValue)));
+            tb.SetBinding(System.Windows.Controls.TextBlock.TextWrappingProperty,  new System.Windows.Data.Binding(nameof(TextElementViewModel.TextWrappingValue)));
+            tb.DataContext = vm;
+            return tb;
+        }
 
-        // Viewbox scales single-line FitToBox text to fill the element.
-        // For multi-line text Viewbox is bypassed (Stretch.None) and the TextBlock wraps natively.
-        var vb = new System.Windows.Controls.Viewbox();
-        vb.SetBinding(System.Windows.Controls.Viewbox.StretchProperty,
-            new System.Windows.Data.Binding(nameof(TextElementViewModel.StretchValue)));
-        vb.DataContext = vm;
-        vb.Child = tb;
-        return vb;
+        // TWO visuals, exactly one visible (see TextElementViewModel.FitViewboxVisibility):
+        // a plain TextBlock constrained by the element box — wraps multi-line text exactly like the
+        // printed output — and a Viewbox-scaled copy for single-line FitToBox. The old single-Viewbox
+        // approach could never wrap (a Viewbox measures its child with infinite width).
+        var plain = MakeTextBlock(vm);
+        plain.SetBinding(UIElement.VisibilityProperty,
+            new System.Windows.Data.Binding(nameof(TextElementViewModel.PlainTextVisibility)));
+
+        var vb = new System.Windows.Controls.Viewbox { Stretch = Stretch.Uniform, DataContext = vm };
+        vb.Child = MakeTextBlock(vm);
+        vb.SetBinding(UIElement.VisibilityProperty,
+            new System.Windows.Data.Binding(nameof(TextElementViewModel.FitViewboxVisibility)));
+
+        var host = new Grid { DataContext = vm };
+        host.Children.Add(plain);
+        host.Children.Add(vb);
+        return host;
     }
 
     private static System.Windows.Controls.Image BuildBarcodeView(BarcodeElementViewModel vm)

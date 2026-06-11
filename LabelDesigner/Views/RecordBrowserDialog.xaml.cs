@@ -1,12 +1,16 @@
 using LabelDesigner.Services;
-using System.ComponentModel;
-using System.Data;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace LabelDesigner.Views;
 
 /// <summary>
 /// Simple grid view of all loaded records. Double-click jumps to that row in the designer.
+/// Columns are built EXPLICITLY with indexer bindings ("[n]") into a string array per row —
+/// auto-generating from a DataTable broke on real-world Excel headers: names containing
+/// . / ( ) [ ] are parsed as binding-path syntax (blank columns), and a header named "#"/"Qty"
+/// or a duplicate threw outright.
 /// </summary>
 public partial class RecordBrowserDialog : Window
 {
@@ -17,11 +21,6 @@ public partial class RecordBrowserDialog : Window
     {
         InitializeComponent();
 
-        // Build a DataTable so DataGrid can auto-generate columns from the first row's fields.
-        var table = new DataTable();
-        table.Columns.Add("#", typeof(int));
-        table.Columns.Add("Qty", typeof(int));
-
         // Collect the union of all field names (preserve first-seen order).
         var fieldOrder = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -29,20 +28,22 @@ public partial class RecordBrowserDialog : Window
             foreach (var k in r.Fields.Keys)
                 if (seen.Add(k)) fieldOrder.Add(k);
 
-        foreach (var name in fieldOrder)
-            table.Columns.Add(name, typeof(string));
+        RecordsGrid.Columns.Add(MakeColumn("#", 0));
+        RecordsGrid.Columns.Add(MakeColumn("Qty", 1));
+        for (int c = 0; c < fieldOrder.Count; c++)
+            RecordsGrid.Columns.Add(MakeColumn(fieldOrder[c], 2 + c));
 
+        var items = new List<string[]>(rows.Count);
         for (int i = 0; i < rows.Count; i++)
         {
-            var values = new object?[2 + fieldOrder.Count];
-            values[0] = i + 1;
-            values[1] = rows[i].PrintQty;
+            var values = new string[2 + fieldOrder.Count];
+            values[0] = (i + 1).ToString();
+            values[1] = rows[i].PrintQty.ToString();
             for (int c = 0; c < fieldOrder.Count; c++)
                 values[2 + c] = rows[i].Fields.TryGetValue(fieldOrder[c], out var v) ? v : "";
-            table.Rows.Add(values);
+            items.Add(values);
         }
-
-        RecordsGrid.ItemsSource = table.DefaultView;
+        RecordsGrid.ItemsSource = items;
 
         if (initialIndex >= 0 && initialIndex < rows.Count)
         {
@@ -50,6 +51,13 @@ public partial class RecordBrowserDialog : Window
             RecordsGrid.ScrollIntoView(RecordsGrid.SelectedItem);
         }
     }
+
+    private static DataGridTextColumn MakeColumn(string header, int index) => new()
+    {
+        // TextBlock header so underscores aren't eaten as access keys.
+        Header  = new TextBlock { Text = header },
+        Binding = new Binding($"[{index}]") { Mode = BindingMode.OneWay }
+    };
 
     private void Grid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {

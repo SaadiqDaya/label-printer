@@ -520,7 +520,10 @@ public static class PrintService
     }
 
     private static string Substitute(string text, Dictionary<string, string> fields) =>
-        Regex.Replace(text, @"\{\{(\w+)\}\}", m =>
+        // Token names may contain spaces/punctuation (Excel headers, data-source names like
+        // "Best Before"), so match anything up to the closing braces — \w+ silently skipped them
+        // and the literal "{{Best Before}}" printed while the canvas preview substituted it.
+        Regex.Replace(text, @"\{\{\s*([^{}]+?)\s*\}\}", m =>
             // Unmatched tokens are replaced with empty string so labels don't print "{{Foo}}".
             fields.TryGetValue(m.Groups[1].Value, out var v) ? v : "");
 

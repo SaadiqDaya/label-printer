@@ -84,18 +84,31 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- ── Zoom toolbar ───────────────────────────────────────────── -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-            <Button Content="−" Width="28" FontSize="14" Padding="0"
-                    Command="{Binding ZoomOutCommand}" ToolTip="Zoom out (−)"/>
-            <TextBlock Text="{Binding PreviewZoomLabel}"
-                       Width="44" TextAlignment="Center"
-                       VerticalAlignment="Center" FontSize="12" Margin="2,0"/>
-            <Button Content="+" Width="28" FontSize="14" Padding="0"
-                    Command="{Binding ZoomInCommand}" ToolTip="Zoom in (+)"/>
-            <Button Content="1:1" Width="36" Margin="8,0,0,0" Padding="4,2"
-                    Command="{Binding ZoomResetCommand}" ToolTip="Reset to 100%"/>
-        </StackPanel>
+        <!-- ── Zoom toolbar + job navigation ──────────────────────────── -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <Button Content="−" Width="28" FontSize="14" Padding="0"
+                        Command="{Binding ZoomOutCommand}" ToolTip="Zoom out (−)"/>
+                <TextBlock Text="{Binding PreviewZoomLabel}"
+                           Width="44" TextAlignment="Center"
+                           VerticalAlignment="Center" FontSize="12" Margin="2,0"/>
+                <Button Content="+" Width="28" FontSize="14" Padding="0"
+                        Command="{Binding ZoomInCommand}" ToolTip="Zoom in (+)"/>
+                <Button Content="1:1" Width="36" Margin="8,0,0,0" Padding="4,2"
+                        Command="{Binding ZoomResetCommand}" ToolTip="Reset to 100%"/>
+            </StackPanel>
+
+            <!-- Step through every record that will actually print (all-records mode) -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                        Visibility="{Binding HasAllRecords, Converter={StaticResource BoolToVisibility}}">
+                <Button Content="◄" Width="28" Padding="0"
+                        Command="{Binding PrevLabelCommand}" ToolTip="Previous record in the job"/>
+                <TextBlock Text="{Binding PreviewInfo}" VerticalAlignment="Center"
+                           FontSize="11" Margin="6,0" MinWidth="170" TextAlignment="Center"/>
+                <Button Content="►" Width="28" Padding="0"
+                        Command="{Binding NextLabelCommand}" ToolTip="Next record in the job"/>
+            </StackPanel>
+        </DockPanel>
 
         <!-- ── Preview image ──────────────────────────────────────────── -->
         <Border BorderBrush="#CCC" BorderThickness="1" Background="#888">
@@ -103,6 +116,7 @@
                 <Image x:Name="PreviewImage"
                        Margin="12"
                        Stretch="Fill"
+                       Source="{Binding PreviewImage}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        RenderOptions.BitmapScalingMode="HighQuality">
                     <Image.LayoutTransform>

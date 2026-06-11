@@ -290,7 +290,7 @@ add_bullet('Font, size, bold/italic/underline, colour, alignment, **Fit to Box**
 add_heading('6.2  Shapes', 2)
 add_para('Rectangle (corner radius), Ellipse, Line, Triangle, Arrow, Diamond — with fill, stroke colour and thickness.')
 add_heading('6.3  Table', 2)
-add_para('Columns (header / bound field / width), row height, colours, borders, fonts. Static rows or field-bound cells.')
+add_para('Columns (header / bound field / width), row height, colours, borders, fonts. Static rows or field-bound cells. **Double-click the table on the canvas** to open the spreadsheet-style row editor (+ Row / − Row, OK applies); the Properties panel\'s Table Rows section edits the same data.')
 page_break()
 
 # 7 BARCODES
@@ -362,7 +362,7 @@ add_heading('12. Printing & Print Preview', 1)
 add_screenshot('print-preview.png', 'The Print Preview window.')
 add_numbered('File > Print (Ctrl+P) opens Print Preview.')
 add_numbered('Choose the **printer** (a Zebra is preferred automatically) and **quantity**, or tick **Print all records**.')
-add_numbered('Review the preview (exactly what prints) and click **Print**.')
+add_numbered('Review the preview (exactly what prints) and click **Print**. In Print-all-records mode the ◄ ► arrows step through every record IN THE JOB (PrintQty-0 rows are excluded — they won\'t print).')
 add_heading('12.1  What\'s Checked Before Printing', 2)
 add_bullet('Every barcode that will print is validated; an un-encodable one **blocks the job** and names the field.')
 add_bullet('Required fields and field rules are enforced.')

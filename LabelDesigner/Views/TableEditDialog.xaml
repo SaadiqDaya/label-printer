@@ -1,0 +1,34 @@
+<Window x:Class="LabelDesigner.Views.TableEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit Table Data"
+        Width="560" Height="420" MinWidth="420" MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <DockPanel Margin="10">
+        <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" FontSize="11" Foreground="#666" TextWrapping="Wrap"
+                   Text="Click a cell and type to edit. Columns (headers, bound fields, widths) are managed in the Properties panel."/>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
+                <Button Content="OK" Width="80" IsDefault="True" Click="Ok_Click"
+                        Background="#2196F3" Foreground="White"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="+ Row" Padding="10,3" Margin="0,0,6,0" Click="AddRow_Click"/>
+                <Button Content="− Row" Padding="10,3" Click="RemoveRow_Click"
+                        ToolTip="Removes the selected row (or the last row)"/>
+            </StackPanel>
+        </DockPanel>
+
+        <DataGrid x:Name="EditGrid"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserSortColumns="False"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="All"
+                  SelectionUnit="CellOrRowHeader"/>
+    </DockPanel>
+</Window>

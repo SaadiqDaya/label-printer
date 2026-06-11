@@ -849,24 +849,33 @@ public class DesignerViewModel : ViewModelBase
     }
 
     private void SyncElementFields(ElementViewModelBase vm)
-    {
-        vm.AvailableFields.Clear();
-        vm.AvailableFields.Add("");
-        foreach (var f in _template.Fields)
-            vm.AvailableFields.Add(f);
-        foreach (var ds in DataSources)
-            if (!string.IsNullOrEmpty(ds.Name) && !vm.AvailableFields.Contains(ds.Name))
-                vm.AvailableFields.Add(ds.Name);
-    }
+        => ReplaceIfChanged(vm.AvailableFields, BuildFieldList(includeBlank: true));
 
     private void SyncLayerFields(LayerViewModel layer)
+        => ReplaceIfChanged(layer.AvailableFields, BuildFieldList(includeBlank: false));
+
+    private List<string> BuildFieldList(bool includeBlank)
     {
-        layer.AvailableFields.Clear();
+        var list = new List<string>();
+        if (includeBlank) list.Add("");
         foreach (var f in _template.Fields)
-            layer.AvailableFields.Add(f);
+            list.Add(f);
         foreach (var ds in DataSources)
-            if (!string.IsNullOrEmpty(ds.Name) && !layer.AvailableFields.Contains(ds.Name))
-                layer.AvailableFields.Add(ds.Name);
+            if (!string.IsNullOrEmpty(ds.Name) && !list.Contains(ds.Name))
+                list.Add(ds.Name);
+        return list;
+    }
+
+    /// <summary>
+    /// Rebuilds the collection ONLY when the contents actually changed. Sync runs on every
+    /// data-source property edit; blindly Clear()ing made each editable Bound Field ComboBox
+    /// drop its selection and wipe the element's BoundField — "I can't tie it to a data source".
+    /// </summary>
+    private static void ReplaceIfChanged(ObservableCollection<string> target, List<string> items)
+    {
+        if (target.Count == items.Count && target.SequenceEqual(items)) return;
+        target.Clear();
+        foreach (var s in items) target.Add(s);
     }
 
     // ─── Resize ───────────────────────────────────────────────────────────────

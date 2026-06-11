@@ -106,7 +106,15 @@ public class TextElementViewModel : ElementViewModelBase
     public bool FitToBox
     {
         get => _fitToBox;
-        set { if (Set(ref _fitToBox, value)) OnPropertyChanged(nameof(StretchValue)); }
+        set
+        {
+            if (Set(ref _fitToBox, value))
+            {
+                OnPropertyChanged(nameof(StretchValue));
+                OnPropertyChanged(nameof(FitViewboxVisibility));
+                OnPropertyChanged(nameof(PlainTextVisibility));
+            }
+        }
     }
 
     private bool _multiLine;
@@ -120,9 +128,23 @@ public class TextElementViewModel : ElementViewModelBase
             {
                 OnPropertyChanged(nameof(TextWrappingValue));
                 OnPropertyChanged(nameof(StretchValue));
+                OnPropertyChanged(nameof(FitViewboxVisibility));
+                OnPropertyChanged(nameof(PlainTextVisibility));
             }
         }
     }
+
+    /// <summary>
+    /// The canvas renders text through TWO visuals and shows exactly one — a Viewbox-scaled block
+    /// for single-line FitToBox, and a plain block for everything else. A Viewbox measures its
+    /// child with INFINITE width, so wrapping text inside one never wraps; the plain block is
+    /// constrained by the element box and wraps exactly like the printed output (render parity).
+    /// </summary>
+    public System.Windows.Visibility FitViewboxVisibility =>
+        (_fitToBox && !_multiLine) ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility PlainTextVisibility =>
+        (_fitToBox && !_multiLine) ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
 
     /// <summary>WPF TextWrapping derived from MultiLine.</summary>
     public TextWrapping TextWrappingValue => _multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap;
