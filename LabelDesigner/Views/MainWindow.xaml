@@ -68,6 +68,9 @@
             <MenuItem Header="_Template">
                 <MenuItem Header="_Manage Fields / Excel Mapping…" Command="{Binding ManageFieldsCommand}" InputGestureText="Ctrl+M" />
                 <MenuItem Header="_Resize Canvas…"                 Command="{Binding ResizeCanvasCommand}" />
+                <Separator/>
+                <MenuItem Header="Template Rou_ting (data → template)…" Command="{Binding OpenTemplateRoutingCommand}"
+                          ToolTip="Rules that pick which template a batch row prints with (used by watch-folder jobs)"/>
             </MenuItem>
         </Menu>
 

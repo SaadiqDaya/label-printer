@@ -57,14 +57,8 @@ public partial class PropertiesPanel : UserControl
         var op    = ((ComboBoxItem?)CondOpPicker.SelectedItem)?.Content?.ToString() ?? "==";
         var value = CondValueBox.Text ?? "";
 
-        string clause;
-        if (op == "set")
-            clause = string.IsNullOrEmpty(field) ? "" : $"{{{field}}}";
-        else if (op == "empty")
-            clause = string.IsNullOrEmpty(field) ? "" : $"!{{{field}}}";
-        else
-            clause = string.IsNullOrEmpty(field) ? "" : $"{{{field}}} {op} \"{value}\"";
-
+        var clause = Services.ConditionClauseBuilder.Build(field, op, value, out var error);
+        if (error != null) { MessageBox.Show(error, "Print condition"); return; }
         if (!string.IsNullOrEmpty(clause))
             vm.AddCondition(clause);
     }

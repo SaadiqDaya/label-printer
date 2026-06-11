@@ -88,6 +88,40 @@ public static class CsvImportService
 
     public static bool IsCsv(string path) => path.EndsWith(".csv", OIC) || path.EndsWith(".tsv", OIC);
 
+    /// <summary>
+    /// Reads a CSV/TSV by HEADER NAME (not template column letters): each row becomes a
+    /// case-insensitive dict of header → value. This is the watch-folder job contract — any ERP
+    /// can produce it without knowing a template's letter mapping. Fully-blank rows are dropped.
+    /// </summary>
+    public static List<Dictionary<string, string>> LoadGeneric(string filePath)
+    {
+        if (!File.Exists(filePath)) throw new FileNotFoundException("Job file not found.", filePath);
+        return ParseGeneric(File.ReadAllText(filePath), Delimiter(filePath));
+    }
+
+    /// <summary>Text-based core of <see cref="LoadGeneric"/> (testable without a file).</summary>
+    public static List<Dictionary<string, string>> ParseGeneric(string text, char delimiter = ',')
+    {
+        var rows = Parse(text, delimiter);
+        var results = new List<Dictionary<string, string>>();
+        if (rows.Count < 2) return results; // header + at least one data row
+
+        var headers = rows[0].Select(h => h.Trim()).ToArray();
+        for (int r = 1; r < rows.Count; r++)
+        {
+            var cells = rows[r];
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int c = 0; c < headers.Length; c++)
+            {
+                if (headers[c].Length == 0) continue;
+                fields[headers[c]] = c < cells.Length ? cells[c].Trim() : "";
+            }
+            if (fields.Values.All(string.IsNullOrEmpty)) continue;
+            results.Add(fields);
+        }
+        return results;
+    }
+
     private static char Delimiter(string path) => path.EndsWith(".tsv", OIC) ? '\t' : ',';
 
     private static Dictionary<string, Dictionary<string, string>> BuildSecondaryLookup(

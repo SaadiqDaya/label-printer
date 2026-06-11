@@ -57,25 +57,121 @@ public class FieldInputViewModel : ViewModelBase
     }
 }
 
-/// <summary>A data-file record shown in the Print Station's record list.</summary>
-public class RowItem
+/// <summary>A data-file record in the Print Station's record list: tick to include, override the
+/// quantity per row ("(was N)" shows when it differs from the file's PrintQty).</summary>
+public class RowItem : ViewModelBase
 {
     public int Index { get; }     // 0-based
     public string Label { get; }
-    public int PrintQty { get; }
-    public RowItem(int index, string label, int printQty) { Index = index; Label = label; PrintQty = printQty; }
+    /// <summary>The PrintQty the data file asked for (0 = the file said skip).</summary>
+    public int OriginalQty { get; }
+
+    private bool _include;
+    public bool Include { get => _include; set => Set(ref _include, value); }
+
+    private int _qty;
+    public int Qty
+    {
+        get => _qty;
+        set { if (Set(ref _qty, Math.Max(0, value))) OnPropertyChanged(nameof(WasText)); }
+    }
+
+    public string WasText => Qty != OriginalQty ? $"(was {OriginalQty})" : "";
+
+    public RowItem(int index, string label, int printQty)
+    {
+        Index = index; Label = label; OriginalQty = printQty;
+        _qty = Math.Max(1, printQty);      // a 0-qty row gets a sensible value if the operator opts it back in
+        _include = printQty > 0;           // the file's PrintQty=0 convention pre-unticks the row
+    }
+}
+
+/// <summary>One row of a watch-folder job, selectable with a quantity override.</summary>
+public class JobRowViewModel : ViewModelBase
+{
+    public PrintJobRow Row { get; }
+    public JobGroupViewModel Group { get; }
+    public string Label { get; }
+    public int OriginalQty { get; }
+    public string? Error => Row.Error;
+    public bool HasError => !string.IsNullOrEmpty(Row.Error);
+
+    private bool _include;
+    public bool Include { get => _include; set => Set(ref _include, value); }
+
+    private int _qty;
+    public int Qty
+    {
+        get => _qty;
+        set { if (Set(ref _qty, Math.Max(0, value))) OnPropertyChanged(nameof(WasText)); }
+    }
+
+    public string WasText => Qty != OriginalQty ? $"(was {OriginalQty})" : "";
+
+    public JobRowViewModel(PrintJobRow row, JobGroupViewModel group)
+    {
+        Row = row; Group = group;
+        OriginalQty = row.Qty;
+        _qty = Math.Max(1, row.Qty);
+        _include = row.Qty > 0;
+        var first = row.Fields.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v) ) ?? "";
+        if (first.Length > 38) first = first[..38] + "…";
+        Label = $"{row.RowNumber}.  {first}";
+    }
+}
+
+/// <summary>A job's rows that print with one template (and that template's routed printer).</summary>
+public class JobGroupViewModel
+{
+    public PrintJobGroup Group { get; }
+    public string TemplateName => Group.Template.Name;
+    public string PrinterText { get; }
+    public ObservableCollection<JobRowViewModel> Rows { get; } = new();
+
+    public JobGroupViewModel(PrintJobGroup group, string? stationPrinter)
+    {
+        Group = group;
+        var p = string.IsNullOrWhiteSpace(group.Template.PrinterProfile.PrinterName)
+            ? stationPrinter : group.Template.PrinterProfile.PrinterName;
+        PrinterText = string.IsNullOrWhiteSpace(p) ? "station printer" : p!;
+        foreach (var row in group.Rows) Rows.Add(new JobRowViewModel(row, this));
+    }
+}
+
+/// <summary>A watch-folder job waiting for the operator.</summary>
+public class JobViewModel : ViewModelBase
+{
+    public WatchJob Job { get; }
+    public string FileName => Job.OriginalName;
+    public string FolderName { get; }
+    public string Info { get; }
+    public ObservableCollection<JobGroupViewModel> Groups { get; } = new();
+    /// <summary>Rows the parser could not route to any template — shown, never printed.</summary>
+    public ObservableCollection<string> Problems { get; } = new();
+    public bool HasProblems => Problems.Count > 0;
+
+    public JobViewModel(WatchJob job, string? stationPrinter)
+    {
+        Job = job;
+        FolderName = Path.GetFileName(job.Folder.Path.TrimEnd('\\', '/'));
+        Info = $"{job.ReceivedAt:HH:mm:ss} — {job.Parsed.TotalRows} row(s), {job.Parsed.Groups.Count} template group(s)";
+        foreach (var g in job.Parsed.Groups) Groups.Add(new JobGroupViewModel(g, stationPrinter));
+        foreach (var r in job.Parsed.UnroutedRows) Problems.Add($"Row {r.RowNumber}: {r.Error}");
+    }
 }
 
 /// <summary>
 /// Shop-floor Print Station: a read-only operator surface. It HONORS the data connection the
 /// template already carries (DefaultExcelPath + column mapping): it auto-loads that file (Excel or
-/// CSV), shows the records, and lets the operator pick a row / print a range / print all — or load a
-/// different file for today's run. Templates with no data file fall back to manual field entry.
-/// No editing, no Save, so master templates can't be corrupted from here.
+/// CSV), shows the records, and lets the operator tick rows / override quantities / print — or load
+/// a different file for today's run. Templates with no data file fall back to manual field entry.
+/// It also runs the WATCH-FOLDER queue: job CSVs dropped by any ERP appear here for release
+/// (or auto-print, per folder). No editing, no Save, so master templates can't be corrupted.
 /// </summary>
-public class PrintStationViewModel : ViewModelBase
+public class PrintStationViewModel : ViewModelBase, IDisposable
 {
     private readonly TemplateService _templateService;
+    private readonly WatchFolderService _watchService;
     private string _search = "";
     private TemplateListItem? _selectedTemplate;
     private LabelTemplate? _template;
@@ -83,6 +179,8 @@ public class PrintStationViewModel : ViewModelBase
     private string _selectedPrinter = "";
     private int _qty = 1;
     private string _status = "Select a template to begin.";
+    private string _operatorName;
+    private bool _skipInvalidRows;
 
     // Data-driven state
     private List<ExcelRow>? _rows;
@@ -91,10 +189,15 @@ public class PrintStationViewModel : ViewModelBase
     private int _rangeStart = 1;
     private int _rangeEnd = 1;
 
+    // Job-queue state
+    private JobViewModel? _selectedJob;
+    private JobRowViewModel? _jobPreviewRow;
+
     public ObservableCollection<TemplateListItem> AllTemplates { get; } = new();
     public ObservableCollection<TemplateListItem> Templates { get; } = new();   // filtered view
     public ObservableCollection<FieldInputViewModel> Inputs { get; } = new();
     public ObservableCollection<RowItem> Rows { get; } = new();
+    public ObservableCollection<JobViewModel> Jobs { get; } = new();
     public ObservableCollection<PrintHistoryEntry> History { get; } = new();
     public List<string> AvailablePrinters { get; } = new();
 
@@ -111,6 +214,25 @@ public class PrintStationViewModel : ViewModelBase
     public int Qty { get => _qty; set => Set(ref _qty, Math.Max(1, value)); }
     public string Status { get => _status; set => Set(ref _status, value); }
 
+    /// <summary>Stamped on every print-history entry (audit "who"). Persisted per station.</summary>
+    public string OperatorName
+    {
+        get => _operatorName;
+        set
+        {
+            if (Set(ref _operatorName, value))
+            {
+                var d = UserSettings.Current;
+                d.OperatorName = value;
+                UserSettings.Save(d);
+            }
+        }
+    }
+
+    /// <summary>Batch mode for "Print all in range": ON = print the valid rows and report the bad
+    /// ones; OFF = any bad row blocks the whole batch (all-or-nothing).</summary>
+    public bool SkipInvalidRows { get => _skipInvalidRows; set => Set(ref _skipInvalidRows, value); }
+
     public bool HasTemplate => _template != null;
 
     // ── Data-driven view state ──
@@ -121,14 +243,38 @@ public class PrintStationViewModel : ViewModelBase
         ? $"{RowCount} record(s) — {System.IO.Path.GetFileName(_dataPath)}"
         : "No data file (manual entry)";
 
-    public int SelectedRowIndex
+    // ── Job-queue view state ──
+    public bool JobMode => _selectedJob != null;
+    public bool ShowData => HasData && !JobMode;
+    public bool ShowManual => ManualEntry && !JobMode;
+    public bool ShowTemplateActions => !JobMode;
+    public string JobsHeader => $"Jobs ({Jobs.Count})";
+
+    public JobViewModel? SelectedJob
     {
-        get => _selectedRowIndex;
-        set { if (Set(ref _selectedRowIndex, value)) RefreshPreview(); }
+        get => _selectedJob;
+        set
+        {
+            if (Set(ref _selectedJob, value))
+            {
+                NotifyJobState();
+                if (value != null)
+                {
+                    // Default the preview to the job's first row.
+                    JobPreviewRow = value.Groups.FirstOrDefault()?.Rows.FirstOrDefault();
+                    Status = $"Job '{value.FileName}' — review rows, then Print job.";
+                }
+                else RefreshPreview();
+            }
+        }
     }
 
-    public int RangeStart { get => _rangeStart; set => Set(ref _rangeStart, Math.Max(1, value)); }
-    public int RangeEnd { get => _rangeEnd; set => Set(ref _rangeEnd, Math.Max(1, value)); }
+    /// <summary>The job row currently being previewed (clicking any row in any group sets it).</summary>
+    public JobRowViewModel? JobPreviewRow
+    {
+        get => _jobPreviewRow;
+        set { if (Set(ref _jobPreviewRow, value) && value != null) RefreshJobPreview(value); }
+    }
 
     public ICommand PrintCommand        => new RelayCommand(PrintNow, () => _template != null);           // manual mode
     public ICommand PrintSelectedCommand => new RelayCommand(PrintSelected, () => HasData && _selectedRowIndex >= 0);
@@ -140,13 +286,76 @@ public class PrintStationViewModel : ViewModelBase
     public ICommand ReprintCommand       => new RelayCommand<PrintHistoryEntry>(Reprint);
     public ICommand ExportHistoryCommand => new RelayCommand(ExportHistory);
     public ICommand ExportZplCommand     => new RelayCommand(ExportZpl, () => _template != null);
+    public ICommand PrintJobCommand      => new RelayCommand(PrintJob, () => SelectedJob != null);
+    public ICommand RejectJobCommand     => new RelayCommand(RejectJob, () => SelectedJob != null);
+    public ICommand CloseJobCommand      => new RelayCommand(() => SelectedJob = null, () => SelectedJob != null);
+
+    public int SelectedRowIndex
+    {
+        get => _selectedRowIndex;
+        set { if (Set(ref _selectedRowIndex, value)) RefreshPreview(); }
+    }
+
+    public int RangeStart { get => _rangeStart; set => Set(ref _rangeStart, Math.Max(1, value)); }
+    public int RangeEnd { get => _rangeEnd; set => Set(ref _rangeEnd, Math.Max(1, value)); }
 
     public PrintStationViewModel()
     {
         _templateService = new TemplateService(AppConfig.TemplatesDir);
         foreach (string p in PrinterSettings.InstalledPrinters) AvailablePrinters.Add(p);
+
+        var settings = UserSettings.Current;
+        _operatorName = string.IsNullOrWhiteSpace(settings.OperatorName)
+            ? Environment.UserName : settings.OperatorName;
+
         LoadTemplates();
         LoadHistory();
+
+        // Watch-folder queue: jobs dropped by the ERP appear in Jobs (or auto-print, per folder).
+        _watchService = new WatchFolderService(System.Windows.Threading.Dispatcher.CurrentDispatcher)
+        {
+            FallbackPrinterProvider = GetSelectedPrinterOrNull,
+            PrintedByProvider = GetOperatorName,
+        };
+        _watchService.JobArrived += OnJobArrived;
+        _watchService.Status += OnWatchStatus;
+        Jobs.CollectionChanged += OnJobsChanged;
+        _watchService.Start();
+    }
+
+    public void Dispose()
+    {
+        _watchService.JobArrived -= OnJobArrived;
+        _watchService.Status -= OnWatchStatus;
+        Jobs.CollectionChanged -= OnJobsChanged;
+        _watchService.Dispose();
+    }
+
+    private string? GetSelectedPrinterOrNull() => string.IsNullOrWhiteSpace(SelectedPrinter) ? null : SelectedPrinter;
+    private string GetOperatorName() => string.IsNullOrWhiteSpace(OperatorName) ? Environment.UserName : OperatorName;
+
+    private void OnJobArrived(WatchJob job)
+    {
+        Jobs.Add(new JobViewModel(job, GetSelectedPrinterOrNull()));
+        // Auto-print history is reloaded via OnWatchStatus; operator jobs reload after PrintJob.
+    }
+
+    private void OnWatchStatus(string message)
+    {
+        Status = message;
+        LoadHistory();   // auto-printed jobs should appear in Recent prints immediately
+    }
+
+    private void OnJobsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => OnPropertyChanged(nameof(JobsHeader));
+
+    private void NotifyJobState()
+    {
+        OnPropertyChanged(nameof(JobMode));
+        OnPropertyChanged(nameof(ShowData));
+        OnPropertyChanged(nameof(ShowManual));
+        OnPropertyChanged(nameof(ShowTemplateActions));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void LoadTemplates()
@@ -176,6 +385,7 @@ public class PrintStationViewModel : ViewModelBase
         _rows = null; _dataPath = null; _selectedRowIndex = -1;
         _template = _selectedTemplate != null ? _templateService.Load(_selectedTemplate.FilePath) : null;
         OnPropertyChanged(nameof(HasTemplate));
+        if (_template != null) SelectedJob = null;   // picking a template leaves job mode
 
         if (_template == null) { Preview = null; NotifyDataState(); return; }
 
@@ -233,7 +443,7 @@ public class PrintStationViewModel : ViewModelBase
     private static string RowLabel(ExcelRow row, int i)
     {
         var first = row.Fields.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
-        if (first.Length > 42) first = first[..42] + "…";
+        if (first.Length > 38) first = first[..38] + "…";
         return $"{i + 1}.  {first}";
     }
 
@@ -265,6 +475,8 @@ public class PrintStationViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasData));
         OnPropertyChanged(nameof(ManualEntry));
+        OnPropertyChanged(nameof(ShowData));
+        OnPropertyChanged(nameof(ShowManual));
         OnPropertyChanged(nameof(RowCount));
         OnPropertyChanged(nameof(DataSummary));
         OnPropertyChanged(nameof(SelectedRowIndex));
@@ -286,9 +498,20 @@ public class PrintStationViewModel : ViewModelBase
 
     private void RefreshPreview()
     {
+        if (JobMode) return;   // job preview is driven by JobPreviewRow
         if (_template == null) { Preview = null; return; }
         try { Preview = PrintService.RenderPreview(_template, CurrentFields(), dpi: _template.Dpi); }
         catch (Exception ex) { LogService.Error("Print Station preview failed.", ex); }
+    }
+
+    private void RefreshJobPreview(JobRowViewModel row)
+    {
+        try
+        {
+            var t = row.Group.Group.Template;
+            Preview = PrintService.RenderPreview(t, row.Row.Fields, dpi: t.Dpi);
+        }
+        catch (Exception ex) { LogService.Error("Print Station job preview failed.", ex); }
     }
 
     private string? Printer() => string.IsNullOrWhiteSpace(SelectedPrinter) ? null : SelectedPrinter;
@@ -324,7 +547,7 @@ public class PrintStationViewModel : ViewModelBase
         RunPrint(() =>
         {
             PrintService.Print(_template!, CurrentFields(), Printer(), Qty,
-                allowFallbackPrinter: false, source: "PrintStation");
+                allowFallbackPrinter: false, source: "PrintStation", printedBy: GetOperatorName());
             Status = $"Printed {Qty} × '{_template!.Name}' at {DateTime.Now:HH:mm:ss}.";
         });
     }
@@ -335,7 +558,8 @@ public class PrintStationViewModel : ViewModelBase
         RunPrint(() =>
         {
             var row = _rows![_selectedRowIndex];
-            PrintService.Print(_template!, row.Fields, Printer(), Qty, allowFallbackPrinter: false, source: "PrintStation");
+            PrintService.Print(_template!, row.Fields, Printer(), Qty,
+                allowFallbackPrinter: false, source: "PrintStation", printedBy: GetOperatorName());
             Status = $"Printed {Qty} × record {_selectedRowIndex + 1} at {DateTime.Now:HH:mm:ss}.";
         });
     }
@@ -347,25 +571,114 @@ public class PrintStationViewModel : ViewModelBase
         {
             int lo = Math.Max(1, Math.Min(RangeStart, RangeEnd));
             int hi = Math.Min(RowCount, Math.Max(RangeStart, RangeEnd));
-            var rows = new List<ExcelRow>();
+
+            // Ticked rows in range, at their (possibly overridden) quantities.
+            var picked = new List<(ExcelRow Row, RowItem Item)>();
+            var skipped = new List<string>();
             for (int i = lo - 1; i <= hi - 1 && i < _rows!.Count; i++)
-                if (_rows[i].PrintQty > 0) rows.Add(_rows[i]);   // honour 0/blank PrintQty as "skip"
+            {
+                var item = Rows[i];
+                if (!item.Include) { skipped.Add($"Row {i + 1}: unticked."); continue; }
+                if (item.Qty <= 0) { skipped.Add($"Row {i + 1}: quantity is 0."); continue; }
+                picked.Add((_rows[i], item));
+            }
 
-            if (rows.Count == 0) { Status = $"Nothing to print in records {lo}–{hi} (all PrintQty = 0)."; return; }
+            if (picked.Count == 0) { Status = $"Nothing to print in records {lo}–{hi} (no rows ticked)."; return; }
 
-            // All-or-nothing: validate the whole range before printing any label.
-            var errs = PrintService.ValidateBatch(_template!, rows.Select(r => r.Fields).ToList());
-            if (errs.Count > 0) throw new LabelValidationException(errs);
+            // Validate the whole range before printing any label.
+            var perRow = PrintService.ValidateRows(_template!, picked.Select(p => p.Row.Fields).ToList());
+            var valid = new List<(ExcelRow Row, RowItem Item)>();
+            var invalid = new List<string>();
+            for (int i = 0; i < picked.Count; i++)
+            {
+                if (perRow[i].Count == 0) valid.Add(picked[i]);
+                else invalid.Add($"Row {picked[i].Item.Index + 1}: {string.Join("; ", perRow[i])}");
+            }
+
+            if (invalid.Count > 0 && !SkipInvalidRows)
+                throw new LabelValidationException(invalid);   // all-or-nothing (default)
+            skipped.AddRange(invalid);
+
+            if (valid.Count == 0)
+            {
+                System.Windows.MessageBox.Show(
+                    "No valid rows to print:\n\n" + string.Join("\n", skipped), "Nothing printed");
+                return;
+            }
 
             int total = 0;
-            foreach (var row in rows)
+            foreach (var (row, item) in valid)
             {
-                PrintService.Print(_template!, row.Fields, Printer(), copies: row.PrintQty,
-                    allowFallbackPrinter: false, validate: false, source: "PrintStation");
-                total += row.PrintQty;
+                PrintService.Print(_template!, row.Fields, Printer(), copies: item.Qty,
+                    allowFallbackPrinter: false, validate: false, source: "PrintStation",
+                    printedBy: GetOperatorName());
+                total += item.Qty;
             }
-            Status = $"Printed {total} label(s) from records {lo}–{hi} at {DateTime.Now:HH:mm:ss}.";
+
+            Status = $"Printed {total} label(s) from records {lo}–{hi}" +
+                     (invalid.Count > 0 ? $" — {invalid.Count} invalid row(s) skipped." : ".");
+            if (invalid.Count > 0)
+                System.Windows.MessageBox.Show(
+                    $"Printed {total} label(s). These rows were SKIPPED:\n\n" + string.Join("\n", invalid),
+                    "Printed with skipped rows");
         });
+    }
+
+    // ── Watch-folder job actions ──────────────────────────────────────────────
+
+    private void PrintJob()
+    {
+        var jobVm = SelectedJob;
+        if (jobVm == null) return;
+
+        RunPrint(() =>
+        {
+            // Push the operator's per-row choices into the parsed rows, then print via the shared engine.
+            var include = new HashSet<PrintJobRow>();
+            foreach (var g in jobVm.Groups)
+                foreach (var r in g.Rows)
+                {
+                    r.Row.Qty = r.Qty;
+                    if (r.Include) include.Add(r.Row);
+                }
+
+            var printedBy = GetOperatorName();
+            var result = JobPrinter.Print(jobVm.Job.Parsed, Printer(),
+                jobVm.Job.Folder.SkipInvalidRows, printedBy, source: "WatchFolder",
+                rowFilter: include.Contains);
+
+            _watchService.CompleteJob(jobVm.Job, result, printedBy);
+            Jobs.Remove(jobVm);
+            SelectedJob = null;
+            Status = $"Job '{jobVm.FileName}' printed: {result.Summary}.";
+            if (result.Skipped.Count > 0)
+                System.Windows.MessageBox.Show(
+                    $"Job '{jobVm.FileName}' printed: {result.Summary}.\n\nSkipped rows:\n" +
+                    string.Join("\n", result.Skipped), "Printed with skipped rows");
+        });
+    }
+
+    private void RejectJob()
+    {
+        var jobVm = SelectedJob;
+        if (jobVm == null) return;
+        var confirm = System.Windows.MessageBox.Show(
+            $"Reject job '{jobVm.FileName}'?\n\nThe file moves to the failed folder (nothing prints).",
+            "Reject job", System.Windows.MessageBoxButton.YesNo);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        try
+        {
+            _watchService.FailJob(jobVm.Job, $"Rejected by operator {GetOperatorName()}.");
+            Jobs.Remove(jobVm);
+            SelectedJob = null;
+            Status = $"Job '{jobVm.FileName}' rejected.";
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Job reject failed.", ex);
+            System.Windows.MessageBox.Show(ex.Message, "Reject failed");
+        }
     }
 
     private void TestPrint()
@@ -373,7 +686,7 @@ public class PrintStationViewModel : ViewModelBase
         if (_template == null) return;
         RunPrint(() =>
         {
-            PrintService.PrintTest(_template!, CurrentFields(), Printer());
+            PrintService.PrintTest(_template!, CurrentFields(), Printer(), printedBy: GetOperatorName());
             Status = $"Test label printed (no serial consumed) at {DateTime.Now:HH:mm:ss}.";
         });
     }
@@ -391,7 +704,7 @@ public class PrintStationViewModel : ViewModelBase
         if (t == null) { System.Windows.MessageBox.Show("Original template no longer exists.", "Reprint"); return; }
         RunPrint(() =>
         {
-            int n = PrintService.Reprint(t, entry);   // exact original IDs, no counter advance
+            int n = PrintService.Reprint(t, entry, printedBy: GetOperatorName());   // exact original IDs, no counter advance
             Status = $"Reprinted {n} × '{entry.TemplateName}' (original IDs) at {DateTime.Now:HH:mm:ss}.";
         });
     }

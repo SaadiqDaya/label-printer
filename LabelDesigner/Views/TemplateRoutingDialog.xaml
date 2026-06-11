@@ -1,0 +1,53 @@
+<Window x:Class="LabelDesigner.Views.TemplateRoutingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Template Routing" Width="760" Height="480"
+        WindowStartupLocation="CenterOwner" MinWidth="640" MinHeight="380"
+        ShowInTaskbar="False">
+    <DockPanel Margin="14">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                   Text="When a batch row has no Template column, these rules pick its template — first match (top to bottom) wins. Rules are saved with the template library, so every station routes the same way. Examples: Volume between 0 and 60 → '50ml DoorTreats'; Name StartsWith 'DT-' → 'DoorTreats'; Size Equals 'Large' → 'Big Label'."/>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <TextBlock Text="{Binding Status}" Foreground="#B00020" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <Button Content="Cancel" Width="80" Margin="0,0,8,0" Command="{Binding CancelCommand}" IsCancel="True"/>
+            <Button Content="Save" Width="80" Command="{Binding SaveCommand}" IsDefault="True"
+                    Background="#2196F3" Foreground="White"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0">
+            <Button Content="Add" Width="80" Margin="0,0,0,6" Command="{Binding AddCommand}"/>
+            <Button Content="Remove" Width="80" Margin="0,0,0,6" Command="{Binding RemoveCommand}"/>
+            <Button Content="Move up" Width="80" Margin="0,0,0,6" Command="{Binding MoveUpCommand}"/>
+            <Button Content="Move down" Width="80" Command="{Binding MoveDownCommand}"/>
+        </StackPanel>
+
+        <DataGrid ItemsSource="{Binding Routes}" SelectedItem="{Binding Selected}"
+                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Field" Binding="{Binding Field, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                <DataGridTemplateColumn Header="Condition" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding DataContext.Operators, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      SelectedItem="{Binding Operator, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Value (text conditions)" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                <DataGridTextColumn Header="Min (range)" Binding="{Binding Min, UpdateSourceTrigger=PropertyChanged}" Width="74"/>
+                <DataGridTextColumn Header="Max (range)" Binding="{Binding Max, UpdateSourceTrigger=PropertyChanged}" Width="74"/>
+                <DataGridTemplateColumn Header="→ Template" Width="180">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox IsEditable="True"
+                                      ItemsSource="{Binding DataContext.TemplateNames, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Text="{Binding TemplateName, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

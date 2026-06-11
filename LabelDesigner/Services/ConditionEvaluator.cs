@@ -127,8 +127,9 @@ public static class ConditionEvaluator
         if (neqF.Success)
             return !string.Equals(Field(neqF.Groups[1].Value), Field(neqF.Groups[2].Value), StringComparison.OrdinalIgnoreCase);
 
-        // {Field} OP number — OP in { >=, <=, >, < }
-        var num = Regex.Match(trimmed, @"^\{(\w+)\}\s*(>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)$");
+        // {Field} OP number — OP in { >=, <=, >, < }. The number may be quoted ("10"): the condition
+        // builders historically emitted the quoted form, and saved templates must keep evaluating.
+        var num = Regex.Match(trimmed, @"^\{(\w+)\}\s*(>=|<=|>|<)\s*""?(-?\d+(?:\.\d+)?)""?$");
         if (num.Success)
         {
             if (double.TryParse(Field(num.Groups[1].Value), NumberStyles.Any, CultureInfo.InvariantCulture, out var lhs) &&

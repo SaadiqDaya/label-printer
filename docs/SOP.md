@@ -294,19 +294,33 @@ A row's PrintQty of **0 (or blank) means "skip"** — it is never treated as 1.
 Launch with the **`--operator`** shortcut. The Print Station is read-only — operators cannot change templates.
 
 ### 13.1 Daily Loop
-1. **Search and pick a template** from the list.
-2. The Station **auto-loads the template's data file** (Excel/CSV) if one is set, and shows the records. (If the template has no data file, you get simple input fields to type instead — required fields are marked `*` and dropdowns appear where allowed values are set.)
-3. **Load file…** — point at today's data file if it differs (same columns).
-4. **Pick a record** and click **Print selected**, or set a **record range** and click **Print all in range**.
-5. Choose the **printer** and **quantity**.
-6. **Test print 1** — print one proof label to check registration/darkness/scannability **without using up a serial number**.
-7. **Reprint** — from **Recent prints**, click **Reprint** to reproduce an earlier job **with the exact same serial numbers and date**.
-8. **Export CSV** — export the print history for reconciliation/audit.
+1. Type your name in the **Operator** box (it is remembered, and recorded on every print in the history).
+2. **Search and pick a template** from the list.
+3. The Station **auto-loads the template's data file** (Excel/CSV) if one is set, and shows the records. (If the template has no data file, you get simple input fields to type instead — required fields are marked `*` and dropdowns appear where allowed values are set.)
+4. **Load file…** — point at today's data file if it differs (same columns).
+5. Each record has a **tick box** (untick to leave it out) and an editable **quantity** — when you change a quantity, "(was N)" shows the file's original value. Rows the file marked `PrintQty 0` arrive unticked.
+6. **Pick a record** and click **Print selected**, or set a **record range** and click **Print all in range** (prints every **ticked** row in the range at its quantity).
+7. **Skip invalid rows (report them)** — normally a single bad row blocks the whole batch. Tick this to print the good rows instead; every skipped row and its reason is listed afterwards.
+8. **Test print 1** — print one proof label to check registration/darkness/scannability **without using up a serial number**.
+9. **Reprint** — from **Recent prints**, click **Reprint** to reproduce an earlier job **with the exact same serial numbers and date**.
+10. **Export CSV** — export the print history for reconciliation/audit.
 
 ### 13.2 What the operator can rely on
 - Required fields must be filled before printing.
 - A missing data file or offline printer produces a clear message, not a silent failure.
 - Reprints reproduce the original IDs; test prints don't consume serials.
+- Every print records **who** printed it (the Operator box) in the history.
+
+### 13.3 The Job Queue (watch folders)
+If IT has configured **watch folders** (Section 19.6), batch jobs sent by the ERP appear automatically in the **Jobs** tab (next to Templates):
+
+1. A new job shows the file name, when it arrived, and how many rows/template groups it contains.
+2. **Click the job** — its rows appear grouped by template (each group also shows which printer it will use). Tick/untick rows and adjust quantities exactly like a data file. Click any row to preview that label.
+3. Rows that could not be matched to a template are listed in red at the top — they will not print; the rest of the job still can.
+4. **PRINT JOB** prints every ticked row, group by group. **Reject** moves the file to the `failed` folder without printing. **Close** leaves the job waiting in the queue.
+5. When a job finishes, its file moves to the `printed` folder with a `.result.txt` report (what printed, what was skipped and why). Failures move to `failed` with a `.error.txt` explaining the problem. **Job files are never deleted.**
+
+> Folders set to **auto-print** skip the queue: valid jobs print as soon as they arrive, and the status bar + history show the result.
 
 ---
 
@@ -435,7 +449,38 @@ Back up the **Templates** folder and the **Data** folder (`counters.json`, `hist
 |---|---|---|
 | Templates (`.lbl`) | `Documents\LabelDesigner\Templates` | appsettings `TemplatesDir` / env var |
 | Serial counters, history, logs | `%APPDATA%\LabelDesigner` | appsettings `DataDir` / Settings / env var |
-| Per-machine settings | `%APPDATA%\LabelDesigner\settings.json` | (written by Settings dialog) |
+| Per-machine settings (incl. watch folders, operator name) | `%APPDATA%\LabelDesigner\settings.json` | (written by Settings dialog) |
+| Template routing rules | `TemplateRoutes.json` in the Templates folder | Template ▸ Template Routing… |
+
+### 19.6 Watch Folders (ERP job drop — works with ANY ERP)
+A watch folder lets any system print labels by simply **writing a CSV file into a folder** — no integration code. Configure per station in **File ▸ Settings ▸ Watch folders** (takes effect when the Print Station next starts).
+
+**Folder layout** (created automatically under the root you choose):
+```
+<root>\inbox\        ← the ERP drops job CSVs here
+<root>\processing\<STATION>\   ← a station claims a job by moving it here (atomic = no double-printing)
+<root>\printed\      ← completed jobs + .result.txt audit report
+<root>\failed\       ← failed/rejected jobs + .error.txt with the reasons
+```
+Files are **moved, never deleted** — `printed\` is the audit trail (purge it on your own schedule). If a station crashes mid-job, its claimed files are returned to the inbox on the next start.
+
+**Job CSV contract** — a header row of **field names** (matching the template's fields, any column order), plus optional columns:
+- `Template` — the template name for that row (rows with different templates are fine in one file).
+- `PrintQty` (or `Qty` / `Copies`) — labels for that row; blank = 1, `0` = skip, non-numeric = skip.
+
+```csv
+ItemName,BestBefore,PrintQty,Template
+Chocolate Box,2026-09-01,12,DoorTreats 50x25
+Gift Tag,2026-08-15,4,GiftTag 76x51
+```
+
+**How a row finds its template** (first hit wins): the row's `Template` column → the shared **routing rules** (Designer ▸ Template ▸ Template Routing…) → the watch folder's **default template** → otherwise the row is reported as unroutable and never guessed.
+
+Routing rule conditions: **Equals**, **Contains**, **StartsWith** ("name begins with DT- → DoorTreats label"), **EndsWith**, and **NumericRange** ("Volume 0–60 → 50ml label" — unit suffixes like `50ml` parse fine). Rules are evaluated top to bottom; the first match wins.
+
+**Per-folder options** (Settings): **Auto-print** (print on arrival vs wait for the operator) and **Skip bad rows** (print valid rows and report the skipped ones vs refuse the whole job — the safer default).
+
+> The watch folder can live on a network share. Multiple stations may watch the **same** folder safely — the atomic claim guarantees each job prints exactly once.
 
 ---
 

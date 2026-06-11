@@ -20,9 +20,9 @@ variable data from Excel/CSV, computed data sources, conditional printing, a rea
 
 | Project | Type | Contents |
 |---|---|---|
-| `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`). No WPF. |
-| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `SerialCounterStore`, `PrintHistoryService`, `AppConfig`, `UserSettings`, `LogService`, importers). |
-| `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip). |
+| `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `TemplateRoute`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`, `TemplateRouter`). No WPF. |
+| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `SerialCounterStore`, `PrintHistoryService`, `WatchFolderService`, `PrintJobParser`, `JobPrinter`, `TemplateRouteStore`, `AppConfig`, `UserSettings`, `LogService`, importers). |
+| `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip, template routing, job parsing, watch-folder file mechanics). |
 
 ## Build, test, run
 
@@ -72,6 +72,10 @@ safe across machines.
 - **Output backends:** GDI raster (default, device-DPI barcodes) or native **ZPL** (`ZplRenderer` + `RawPrinter`, opt-in via the printer profile).
 - **Validation is fail-loud:** un-encodable barcodes, invalid/missing required fields, missing images, missing/offline printers, and unreachable shared serial stores all **block the print** with a clear message — never a silent blank or wrong-device print.
 - **Print Station manual entry is type-aware:** each operator field renders the control that fits its `FieldDefinition.DataType` — allowed-values → dropdown, `Date` → calendar picker, `Number` → numeric-only box (see `Behaviors/NumericInput.cs`), else plain text. This is an entry-time guard only; `PrintService.ApplyFormat` + `FieldValidator` remain the formatting/validation authority.
+- **Watch folders** (`WatchFolderService`, configured in File ▸ Settings, runs in the Print Station): any ERP drops a batch CSV into `<root>\inbox\`; the station claims it by an **atomic move** into `processing\<MACHINE>\` (the move is the lock — two stations can't double-print), then either auto-prints or queues it for operator release. Finished files move to `printed\` with a `.result.txt` audit sidecar, failures to `failed\` with `.error.txt` — **job files are never deleted**. Crash leftovers are returned to the inbox on next start.
+- **Job CSV contract** (`CsvImportService.LoadGeneric` + `PrintJobParser`): header row of **field names** (order-independent), plus optional `Template` (per-row template), and `PrintQty`/`Qty`/`Copies` (blank = 1, `0` = skip). Rows route to a template by: `Template` column → routing rules (`TemplateRouter` + `TemplateRoutes.json` in the templates dir, edited via Template ▸ Template Routing…) → the folder's default template → reported as unroutable (never guessed).
+- **Batch modes:** all-or-nothing (default — any bad row blocks the batch) or **skip-with-reason** (print the valid rows, list every skipped row + reason in the UI and the sidecar). Print Station rows are tickable with per-row quantity overrides ("(was N)").
+- **Printed-by attribution:** every history entry records who printed (`PrintHistoryEntry.PrintedBy` — the Print Station operator name, Windows username, or `JaneERP` for IPC jobs); included in the history display and CSV export.
 
 ## Documentation
 
@@ -93,6 +97,7 @@ safe across machines.
 
 - **Native ZPL output is best-effort until validated on a physical ZD621** with a scanner — barcode
   parameters and rotation need hardware confirmation. GDI is the default and unaffected.
-- Not yet done: element naming/lock/group, smart-snap guides, GS1 AI builder, watch-folder + `--print`
-  CLI, PNG/PDF export, curved text, signed installer/auto-update, guided `.btw` migration. See the
+- Watch-folder config changes apply when the Print Station next starts (no live reload yet).
+- Not yet done: element naming/lock/group, smart-snap guides, GS1 AI builder, `--print` CLI,
+  PNG/PDF export, curved text, signed installer/auto-update, guided `.btw` migration. See the
   team's roadmap notes for priorities.

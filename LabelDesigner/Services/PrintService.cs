@@ -17,7 +17,8 @@ public static class PrintService
 {
     public static void Print(LabelTemplate template, Dictionary<string, string> fields,
         string? printerName = null, int copies = 1,
-        bool allowFallbackPrinter = true, bool validate = true, string source = "Manual")
+        bool allowFallbackPrinter = true, bool validate = true, string source = "Manual",
+        string? printedBy = null)
     {
         if (copies <= 0) return;   // qty = 0 means "don't print" — never default to 1
 
@@ -53,7 +54,7 @@ public static class PrintService
             perLabel.Add(f);
         }
 
-        PrintResolved(queue, template, perLabel, source, fields, constants, serialPlan);
+        PrintResolved(queue, template, perLabel, source, fields, constants, serialPlan, printedBy);
     }
 
     /// <summary>
@@ -62,7 +63,7 @@ public static class PrintService
     /// labels never mints new carton IDs). Defaults to NOT falling back to another printer.
     /// </summary>
     public static int Reprint(LabelTemplate template, PrintHistoryEntry entry,
-        string? printerName = null, bool allowFallbackPrinter = false)
+        string? printerName = null, bool allowFallbackPrinter = false, string? printedBy = null)
     {
         int qty = Math.Max(1, entry.ActualPrinted > 0 ? entry.ActualPrinted : entry.Qty);
         var perLabel = new List<Dictionary<string, string>>(qty);
@@ -78,7 +79,7 @@ public static class PrintService
 
         var queue = GetPrintQueue(printerName ?? entry.Printer ?? template.PrinterProfile.PrinterName, allowFallbackPrinter);
         CheckPrinterReady(queue);
-        return PrintResolved(queue, template, perLabel, "Reprint", entry.Fields, entry.ResolvedConstants, entry.SerialPlan);
+        return PrintResolved(queue, template, perLabel, "Reprint", entry.Fields, entry.ResolvedConstants, entry.SerialPlan, printedBy);
     }
 
     /// <summary>
@@ -86,7 +87,8 @@ public static class PrintService
     /// Continuous serial — it uses the current base (GetBase) and never reserves/advances. Recorded
     /// as source "Test" so it's auditable but obviously not a production run.
     /// </summary>
-    public static void PrintTest(LabelTemplate template, Dictionary<string, string> fields, string? printerName = null)
+    public static void PrintTest(LabelTemplate template, Dictionary<string, string> fields, string? printerName = null,
+        string? printedBy = null)
     {
         var errors = Validate(template, fields);
         if (errors.Count > 0)
@@ -104,7 +106,7 @@ public static class PrintService
             f.TryAdd(kv.Key, kv.Value);
 
         PrintResolved(queue, template, new List<Dictionary<string, string>> { f },
-            "Test", fields, constants, new List<SerialPlanItem>());
+            "Test", fields, constants, new List<SerialPlanItem>(), printedBy);
     }
 
     /// <summary>
@@ -114,13 +116,14 @@ public static class PrintService
     private static int PrintResolved(PrintQueue queue, LabelTemplate template,
         IReadOnlyList<Dictionary<string, string>> perLabel, string source,
         Dictionary<string, string> historyFields, Dictionary<string, string> resolvedConstants,
-        List<SerialPlanItem> serialPlan)
+        List<SerialPlanItem> serialPlan, string? printedBy = null)
     {
         if (perLabel.Count == 0) return 0;
+        printedBy ??= Environment.UserName;
 
         // Native ZPL backend (opt-in): emit ZPL II and send raw, bypassing GDI entirely.
         if (template.PrinterProfile.OutputMode == PrintBackend.Zpl)
-            return PrintZpl(queue, template, perLabel, source, historyFields, resolvedConstants, serialPlan);
+            return PrintZpl(queue, template, perLabel, source, historyFields, resolvedConstants, serialPlan, printedBy);
 
         var ticket = queue.DefaultPrintTicket;
         ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.Unknown, template.WidthPx, template.HeightPx);
@@ -160,12 +163,13 @@ public static class PrintService
                 Qty               = perLabel.Count,
                 ActualPrinted     = printed,
                 Source            = source,
+                PrintedBy         = printedBy,
                 Fields            = new Dictionary<string, string>(historyFields),
                 ResolvedConstants = new Dictionary<string, string>(resolvedConstants),
                 SerialPlan        = serialPlan
             });
         }
-        LogService.Info($"Printed {printed}/{perLabel.Count} '{template.Name}' to '{queue.Name}' @ {template.Dpi} dpi [{source}].");
+        LogService.Info($"Printed {printed}/{perLabel.Count} '{template.Name}' to '{queue.Name}' @ {template.Dpi} dpi [{source}] by {printedBy}.");
         return printed;
     }
 
@@ -174,8 +178,9 @@ public static class PrintService
     private static int PrintZpl(PrintQueue queue, LabelTemplate template,
         IReadOnlyList<Dictionary<string, string>> perLabel, string source,
         Dictionary<string, string> historyFields, Dictionary<string, string> resolvedConstants,
-        List<SerialPlanItem> serialPlan)
+        List<SerialPlanItem> serialPlan, string? printedBy = null)
     {
+        printedBy ??= Environment.UserName;
         var prof = template.PrinterProfile;
         int printed = 0;
         try
@@ -204,12 +209,13 @@ public static class PrintService
                 Qty               = perLabel.Count,
                 ActualPrinted     = printed,
                 Source            = source,
+                PrintedBy         = printedBy,
                 Fields            = new Dictionary<string, string>(historyFields),
                 ResolvedConstants = new Dictionary<string, string>(resolvedConstants),
                 SerialPlan        = serialPlan
             });
         }
-        LogService.Info($"Printed {printed}/{perLabel.Count} '{template.Name}' via ZPL @ {template.Dpi} dpi [{source}].");
+        LogService.Info($"Printed {printed}/{perLabel.Count} '{template.Name}' via ZPL @ {template.Dpi} dpi [{source}] by {printedBy}.");
         return printed;
     }
 
@@ -270,6 +276,17 @@ public static class PrintService
             foreach (var e in Validate(template, rows[i]))
                 errors.Add($"Row {i + 1}: {e}");
         return errors;
+    }
+
+    /// <summary>Per-row validation, index-aligned with <paramref name="rows"/> (empty list = row OK).
+    /// Backs skip-with-reason mode: callers print the clean rows and REPORT the dirty ones explicitly.
+    /// <see cref="ValidateBatch"/> stays the all-or-nothing aggregate.</summary>
+    public static List<List<string>> ValidateRows(LabelTemplate template, IReadOnlyList<Dictionary<string, string>> rows)
+    {
+        var results = new List<List<string>>(rows.Count);
+        foreach (var row in rows)
+            results.Add(Validate(template, row).ToList());
+        return results;
     }
 
     /// <summary>Throws PrinterOfflineException when the queue reports a hard problem. Best-effort —

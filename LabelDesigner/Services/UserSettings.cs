@@ -9,6 +9,26 @@ namespace LabelDesigner.Services;
 /// dialog. Currently controls where the CONTINUOUS serial counter + print history live:
 /// Local (this PC only) or a Shared network folder (so multiple stations share one sequence/audit).
 /// </summary>
+/// <summary>One monitored job-drop folder (per station). The configured path is the ROOT; the
+/// station creates inbox/processing/printed/failed beneath it. Any ERP that can write a CSV into
+/// inbox\ can print — no bridge code required.</summary>
+public sealed class WatchFolderConfig
+{
+    public string Path { get; set; } = "";
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>True: valid jobs print as soon as they land. False: jobs wait in the Print Station
+    /// queue until an operator releases them.</summary>
+    public bool AutoPrint { get; set; }
+
+    /// <summary>True: print the valid rows and report the bad ones (skip-with-reason).
+    /// False: any bad row fails the whole job (all-or-nothing).</summary>
+    public bool SkipInvalidRows { get; set; }
+
+    /// <summary>Template used for rows with no Template column and no matching routing rule.</summary>
+    public string DefaultTemplate { get; set; } = "";
+}
+
 public static class UserSettings
 {
     public sealed class Data
@@ -16,6 +36,11 @@ public static class UserSettings
         /// <summary>"Local" or "Shared".</summary>
         public string SerialStorageMode { get; set; } = "Local";
         public string SharedDataDir { get; set; } = "";
+
+        /// <summary>Operator name stamped on print history (Print Station). Blank → Windows username.</summary>
+        public string OperatorName { get; set; } = "";
+
+        public List<WatchFolderConfig> WatchFolders { get; set; } = new();
     }
 
     private static readonly object _lock = new();
@@ -38,7 +63,10 @@ public static class UserSettings
                         _cache = JsonSerializer.Deserialize<Data>(File.ReadAllText(FilePath));
                 }
                 catch (Exception ex) { LogService.Error("Failed to read user settings.", ex); }
-                return _cache ??= new Data();
+                _cache ??= new Data();
+                _cache.WatchFolders ??= new();      // settings.json predating this field
+                _cache.OperatorName ??= "";
+                return _cache;
             }
         }
     }

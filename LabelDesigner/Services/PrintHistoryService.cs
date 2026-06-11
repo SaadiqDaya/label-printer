@@ -33,8 +33,13 @@ public class PrintHistoryEntry
     /// <summary>Labels actually sent to the spooler (≤ Qty when a batch failed partway).</summary>
     public int ActualPrinted { get; set; }
 
-    /// <summary>Manual / PrintStation / IPC / Reprint.</summary>
+    /// <summary>Manual / PrintStation / IPC / WatchFolder / Reprint.</summary>
     public string Source { get; set; } = "Manual";
+
+    /// <summary>Who printed it: the operator name from the Print Station, else the Windows username.
+    /// Null on entries recorded before this field existed.</summary>
+    public string? PrintedBy { get; set; }
+
     public string? AppVersion { get; set; }
 
     /// <summary>Caller-supplied field values (Excel/operator/IPC).</summary>
@@ -47,7 +52,7 @@ public class PrintHistoryEntry
     public List<SerialPlanItem> SerialPlan { get; set; } = new();
 
     public string Display =>
-        $"{TimestampIso}  {TemplateName}  ×{(ActualPrinted > 0 ? ActualPrinted : Qty)}  [{Source}]  → {Printer}";
+        $"{TimestampIso}  {TemplateName}  ×{(ActualPrinted > 0 ? ActualPrinted : Qty)}  [{Source}{(string.IsNullOrWhiteSpace(PrintedBy) ? "" : " · " + PrintedBy)}]  → {Printer}";
 }
 
 /// <summary>
@@ -92,12 +97,12 @@ public static class PrintHistoryService
         {
             var list = Read();
             var sb = new StringBuilder();
-            sb.AppendLine("Timestamp,Template,Source,Printer,RequestedQty,ActualPrinted,AppVersion,Fields");
+            sb.AppendLine("Timestamp,Template,Source,PrintedBy,Printer,RequestedQty,ActualPrinted,AppVersion,Fields");
             foreach (var e in list)
             {
                 var fields = string.Join("; ", e.Fields.Select(kv => $"{kv.Key}={kv.Value}"));
                 sb.AppendLine(string.Join(",",
-                    Csv(e.TimestampIso), Csv(e.TemplateName), Csv(e.Source), Csv(e.Printer ?? ""),
+                    Csv(e.TimestampIso), Csv(e.TemplateName), Csv(e.Source), Csv(e.PrintedBy ?? ""), Csv(e.Printer ?? ""),
                     e.Qty, e.ActualPrinted, Csv(e.AppVersion ?? ""), Csv(fields)));
             }
             File.WriteAllText(path, sb.ToString());

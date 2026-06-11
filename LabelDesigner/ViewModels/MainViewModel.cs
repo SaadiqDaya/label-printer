@@ -59,6 +59,14 @@ public class MainViewModel : ViewModelBase
         dlg.ShowDialog();
     }
 
+    public ICommand OpenTemplateRoutingCommand => new RelayCommand(OpenTemplateRouting);
+
+    private void OpenTemplateRouting()
+    {
+        var dlg = new Views.TemplateRoutingDialog { Owner = Application.Current.MainWindow };
+        dlg.ShowDialog();
+    }
+
     // ─── Element commands (delegate to Designer) ─────────────────────────────────
     public ICommand AddTextCommand        => Designer.AddTextCommand;
     public ICommand AddBarcodeCommand     => Designer.AddBarcodeCommand;
@@ -244,7 +252,7 @@ public class MainViewModel : ViewModelBase
             {
                 // Unattended job: do NOT silently fall back to the default printer.
                 Services.PrintService.Print(template, job.Fields, job.PrinterName, job.Quantity,
-                    allowFallbackPrinter: false, source: "IPC");
+                    allowFallbackPrinter: false, source: "IPC", printedBy: "JaneERP");
                 return Resp("printed", $"Printed {job.Quantity} label(s).");
             }
             catch (Services.PrinterNotFoundException ex) { return Resp("error", ex.Message); }

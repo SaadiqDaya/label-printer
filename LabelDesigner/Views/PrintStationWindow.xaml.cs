@@ -9,5 +9,12 @@ public partial class PrintStationWindow : Window
     {
         InitializeComponent();
         DataContext = new PrintStationViewModel();
+        Closed += OnClosed;
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        Closed -= OnClosed;
+        (DataContext as PrintStationViewModel)?.Dispose();   // stops the watch-folder service
     }
 }
