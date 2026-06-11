@@ -10,6 +10,7 @@
     <UserControl.Resources>
         <conv:NullToVisibilityConverter    x:Key="NullToVisibility" />
         <conv:BoolToVisibilityConverter    x:Key="BoolToVisibility" />
+        <conv:InverseBoolConverter         x:Key="InverseBool" />
         <conv:PlusOneConverter             x:Key="PlusOne" />
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="0,2,0,4" />
@@ -36,9 +37,22 @@
                                     ConverterParameter=inverse}"
                        HorizontalAlignment="Center" />
 
-            <!-- Common position/size properties -->
-            <GroupBox Header="Position &amp; Size"
+            <!-- Identity: name + lock -->
+            <GroupBox Header="Element"
                       Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Name" Style="{StaticResource Label}"/>
+                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Optional name shown in the Elements list (e.g. 'Lot barcode')"/>
+                    <CheckBox Content="Locked" IsChecked="{Binding IsLocked}" Margin="0,2,0,2"
+                              ToolTip="Locked elements can't be moved, resized or deleted on the canvas. They still print."/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Common position/size properties (read-only while locked) -->
+            <GroupBox Header="Position &amp; Size"
+                      Visibility="{Binding Converter={StaticResource NullToVisibility}}"
+                      IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="30"/>

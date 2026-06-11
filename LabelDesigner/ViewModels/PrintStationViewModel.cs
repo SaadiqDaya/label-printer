@@ -172,6 +172,7 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
 {
     private readonly TemplateService _templateService;
     private readonly WatchFolderService _watchService;
+    private readonly HttpPrintService? _httpService;
     private string _search = "";
     private TemplateListItem? _selectedTemplate;
     private LabelTemplate? _template;
@@ -321,6 +322,25 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
         _watchService.Status += OnWatchStatus;
         Jobs.CollectionChanged += OnJobsChanged;
         _watchService.Start();
+
+        // Shim-compatible HTTP print API (opt-in via File ▸ Settings). A failed start is reported
+        // loudly — an API that silently isn't there would strand the calling system.
+        if (settings.HttpApiEnabled)
+        {
+            _httpService = new HttpPrintService(settings.HttpApiPort,
+                System.Windows.Threading.Dispatcher.CurrentDispatcher)
+            {
+                FallbackPrinterProvider = GetSelectedPrinterOrNull,
+                PrintedByProvider = GetOperatorName,
+            };
+            _httpService.Status += OnWatchStatus;   // same status-bar + history-refresh handling
+            try { _httpService.Start(); }
+            catch (Exception ex)
+            {
+                LogService.Error($"HTTP print API could not start on port {settings.HttpApiPort}.", ex);
+                Status = $"HTTP print API FAILED to start on port {settings.HttpApiPort}: {ex.Message}";
+            }
+        }
     }
 
     public void Dispose()
@@ -329,6 +349,11 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
         _watchService.Status -= OnWatchStatus;
         Jobs.CollectionChanged -= OnJobsChanged;
         _watchService.Dispose();
+        if (_httpService != null)
+        {
+            _httpService.Status -= OnWatchStatus;
+            _httpService.Dispose();
+        }
     }
 
     private string? GetSelectedPrinterOrNull() => string.IsNullOrWhiteSpace(SelectedPrinter) ? null : SelectedPrinter;

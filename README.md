@@ -21,8 +21,8 @@ variable data from Excel/CSV, computed data sources, conditional printing, a rea
 | Project | Type | Contents |
 |---|---|---|
 | `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `TemplateRoute`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`, `TemplateRouter`). No WPF. |
-| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `SerialCounterStore`, `PrintHistoryService`, `WatchFolderService`, `PrintJobParser`, `JobPrinter`, `TemplateRouteStore`, `AppConfig`, `UserSettings`, `LogService`, importers). |
-| `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip, template routing, job parsing, watch-folder file mechanics). |
+| `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `HttpPrintService`, `SerialCounterStore`, `PrintHistoryService`, `WatchFolderService`, `PrintJobParser`, `JobPrinter`, `TemplateRouteStore`, `PdfExporter`, `AppConfig`, `UserSettings`, `LogService`, importers). |
+| `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip, template routing, job parsing, watch-folder file mechanics, shim HTTP contract helpers, PDF skeleton, snap math, lock/group behaviour). |
 
 ## Build, test, run
 
@@ -76,6 +76,10 @@ safe across machines.
 - **Job CSV contract** (`CsvImportService.LoadGeneric` + `PrintJobParser`): header row of **field names** (order-independent), plus optional `Template` (per-row template), and `PrintQty`/`Qty`/`Copies` (blank = 1, `0` = skip). Rows route to a template by: `Template` column → routing rules (`TemplateRouter` + `TemplateRoutes.json` in the templates dir, edited via Template ▸ Template Routing…) → the folder's default template → reported as unroutable (never guessed).
 - **Batch modes:** all-or-nothing (default — any bad row blocks the batch) or **skip-with-reason** (print the valid rows, list every skipped row + reason in the UI and the sidecar). Print Station rows are tickable with per-row quantity overrides ("(was N)").
 - **Printed-by attribution:** every history entry records who printed (`PrintHistoryEntry.PrintedBy` — the Print Station operator name, Windows username, or `JaneERP` for IPC jobs); included in the history display and CSV export.
+- **HTTP print API** (`HttpPrintService`, opt-in via File ▸ Settings, runs in the Print Station, **localhost only**): compatible with the BarTender-shim contract so an external system can switch from BarTender by changing one base URL. `GET /health`, `GET /printers`, `POST /api/print` with `{templatePath, printerName?, jobName?, labels:[{field:value},…]}` — one dict per **physical label** (quantity = repetition; consecutive identical dicts are collapsed into one print run). The `templatePath` file-name stem (`.btw` or `.lbl`) is matched to a template by **name**. All-or-nothing: every row is validated before the first label prints; responses are `{success, labelsRendered, printer}` / `{success:false, error}`.
+- **Element name / lock / group:** every element has an optional `Name` (shown in the Elements list), `IsLocked` (can't be moved, resized, or deleted on the canvas — still prints; grey selection border, position fields disabled), and a persistent `GroupId` (Ctrl+G / Ctrl+Shift+G — clicking any member selects the whole group; saved in the template).
+- **Smart-snap guides** (`SnapSolver` + `DesignerCanvas`, "Guides" toolbar toggle): while dragging, the selection's bounding-box edges/centre snap to other elements' edges/centres and the canvas edges/centre, with pink dashed guide lines at the match.
+- **Export** (File ▸ Export): the current label (live row or test data — same values as the preview) as **PNG** at template DPI, **PDF** at exact label size (`PdfExporter`, dependency-free single-image PDF — pixel-identical to the preview, not a re-layout), or **ZPL** text.
 
 ## Documentation
 
@@ -97,7 +101,8 @@ safe across machines.
 
 - **Native ZPL output is best-effort until validated on a physical ZD621** with a scanner — barcode
   parameters and rotation need hardware confirmation. GDI is the default and unaffected.
-- Watch-folder config changes apply when the Print Station next starts (no live reload yet).
-- Not yet done: element naming/lock/group, smart-snap guides, GS1 AI builder, `--print` CLI,
-  PNG/PDF export, curved text, signed installer/auto-update, guided `.btw` migration. See the
-  team's roadmap notes for priorities.
+- Watch-folder and HTTP-API config changes apply when the Print Station next starts (no live reload yet).
+- The HTTP API binds `http://localhost:<port>/` only. Exposing it to other machines would need an
+  admin URL ACL (`netsh http add urlacl`) and a deliberate code change — left out on purpose.
+- Not yet done: GS1 AI builder, `--print` CLI, curved text, signed installer/auto-update,
+  guided `.btw` migration. See the team's roadmap notes for priorities.

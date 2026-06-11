@@ -22,6 +22,7 @@ public class TextElement : LabelElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
         PrintCondition = PrintCondition, LayerId = LayerId, BackgroundColor = BackgroundColor, Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked,   // GroupId intentionally NOT copied: a clone shouldn't silently join the group
         Text = Text, BoundField = BoundField, FontFamily = FontFamily,
         FontSize = FontSize, Bold = Bold, Italic = Italic, Underline = Underline,
         Color = Color, Alignment = Alignment, FitToBox = FitToBox, MultiLine = MultiLine

@@ -244,6 +244,7 @@ add_table(['Shortcut', 'Action'], [
     ['Ctrl+Z / Y', 'Undo / Redo'],
     ['Ctrl+C / V', 'Copy / Paste element'],
     ['Ctrl+D', 'Duplicate selected element'],
+    ['Ctrl+G / Ctrl+Shift+G', 'Group / Ungroup selected elements'],
     ['Ctrl+M', 'Manage Fields'],
     ['Ctrl+P', 'Print'],
     ['Delete', 'Delete selected element(s)'],
@@ -262,8 +263,12 @@ add_bullet('Align left / right / top / bottom / centre-H / centre-V')
 add_bullet('Distribute horizontally / vertically (3+ elements)')
 add_bullet('Bring to Front / Send to Back (and Move Forward/Backward)')
 add_bullet('Duplicate (Ctrl+D)')
-add_heading('4.3  Snap & Zoom', 2)
-add_para('Toggle **Snap to Grid** and set the grid size. Zoom the canvas with the zoom controls — this does not change the label size.')
+add_heading('4.3  Snap, Smart Guides & Zoom', 2)
+add_para('Toggle **Snap to Grid** and set the grid size. **Smart guides** (the Guides toolbar toggle, on by default) snap a dragged element to other elements\' edges/centres and to the canvas edges/centre, showing a pink dashed guide line at the match. Zoom the canvas with the zoom controls — this does not change the label size.')
+add_heading('4.4  Naming, Locking & Grouping', 2)
+add_bullet('**Name** — the Element box at the top of the Properties panel names an element for the Elements list (e.g. "Lot barcode").')
+add_bullet('**Lock** — a locked element cannot be moved, resized or deleted on the canvas (grey selection border, lock icon in the Elements list) but **still prints**. Untick Locked to edit again.')
+add_bullet('**Group (Ctrl+G)** — selected elements become a persistent group: clicking any member selects them all and they move as one. Saved with the template. **Ungroup: Ctrl+Shift+G.** Ctrl-click still toggles one member when you need to adjust a single element.')
 page_break()
 
 # 5 TEMPLATES
@@ -272,6 +277,7 @@ add_numbered('**New:** File > New Template — enter name, width/height (mm) and
 add_numbered('**Open:** File > Open, or pick from the template list / Recent Templates.')
 add_numbered('**Save:** File > Save (atomic write — a crash mid-save cannot corrupt the file).')
 add_numbered('**Label Setup:** Template > Resize Canvas — size, DPI (203/300), output backend, darkness/speed (Section 15).')
+add_numbered('**Export:** File > Export — the label (with the same data the preview shows) as **PNG** at template DPI, a **PDF** at the exact label size, or **ZPL** text (Section 16).')
 page_break()
 
 # 6 ELEMENTS
@@ -469,6 +475,13 @@ add_para('A watch folder lets any system print labels by **writing a CSV into a 
 add_para('**Job CSV contract:** a header row of **field names** (matching the template\'s fields, any order), plus optional **Template** (per-row template name) and **PrintQty** / Qty / Copies (blank = 1, 0 = skip).')
 add_para('**How a row finds its template** (first hit wins): its Template column → the shared routing rules (Designer > Template > Template Routing…, saved as TemplateRoutes.json in the Templates folder) → the folder\'s default template → otherwise the row is reported as unroutable, never guessed. Rule conditions: Equals, Contains, StartsWith ("name begins with DT-"), EndsWith, NumericRange ("Volume 0–60", unit suffixes like 50ml parse fine); rules run top to bottom, first match wins.')
 add_para('**Per-folder options:** Auto-print (print on arrival vs wait for the operator) and Skip bad rows (print valid rows and report the skipped ones vs refuse the whole job — the safer default).')
+add_heading('19.5  HTTP Print API (for external systems)', 2)
+add_para('The Print Station can serve a small **localhost-only** web API compatible with the BarTender shim contract, so a system that prints through that shim can switch to LabelDesigner by changing one base URL. Off by default — enable and set the port in **File > Settings > HTTP print API** (applies when the Print Station next starts).')
+add_bullet('**GET /health** — liveness check: {"status":"ok","service":"LabelDesigner","version":"…"}.')
+add_bullet('**GET /printers** — installed printer names: {"success":true,"printers":[…]}.')
+add_bullet('**POST /api/print** — body { "templatePath": "DoorTreats-50ml.btw", "printerName": "…", "jobName": "…", "labels": [ {field: value}, … ] }. Each labels entry is ONE physical label (send the same data twice for two labels).')
+add_para('Only the **file name** of templatePath matters — ".btw"/".lbl"/bare names are matched to a LabelDesigner template by NAME (recreate each .btw design once under the same name). The whole request validates before anything prints (all-or-nothing). A missing/offline printer fails the job loudly — never a silent fallback. Responses: {"success":true,"labelsRendered":N,"printer":"…"} or {"success":false,"error":"…"}. Printed labels appear in the normal history (source HTTP).')
+add_warning('The API listens on localhost only — other machines cannot reach it. Run the calling system on the same PC as the Print Station.')
 
 # FOOTER
 doc.add_paragraph()

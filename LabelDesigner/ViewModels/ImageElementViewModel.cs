@@ -24,7 +24,7 @@ public class ImageElementViewModel : ElementViewModelBase
     public static IEnumerable<ImageRenderMode> RenderModes => Enum.GetValues<ImageRenderMode>();
 
     public override ElementType ElementType => ElementType.Image;
-    public override string DisplayName =>
+    protected override string TypeDisplayName =>
         !string.IsNullOrEmpty(_boundField) ? $"Image [{_boundField}]"
         : string.IsNullOrEmpty(ImagePath) ? "Image (empty)"
         : $"Image — {System.IO.Path.GetFileName(ImagePath)}";
@@ -79,6 +79,7 @@ public class ImageElementViewModel : ElementViewModelBase
     {
         Id = Id, X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
         PrintCondition = PrintCondition, LayerId = LayerId, BackgroundColor = BackgroundColor, Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked, GroupId = GroupId,
         ImagePath = ImagePath, BoundField = BoundField, ImageBaseFolder = ImageBaseFolder,
         MaintainAspectRatio = MaintainAspectRatio, Opacity = Opacity,
         RenderMode = RenderMode, Invert = Invert, Threshold = Threshold
@@ -89,6 +90,7 @@ public class ImageElementViewModel : ElementViewModelBase
         var m = (ImageElement)element;
         Id = m.Id; X = m.X; Y = m.Y; Width = m.Width; Height = m.Height; ZIndex = m.ZIndex;
         PrintCondition = m.PrintCondition; LayerId = m.LayerId; BackgroundColor = m.BackgroundColor; Rotation = m.Rotation;
+        Name = m.Name; IsLocked = m.IsLocked; GroupId = m.GroupId;
         ImagePath = m.ImagePath; BoundField = m.BoundField; ImageBaseFolder = m.ImageBaseFolder;
         MaintainAspectRatio = m.MaintainAspectRatio; Opacity = m.Opacity;
         RenderMode = m.RenderMode; Invert = m.Invert; Threshold = m.Threshold;

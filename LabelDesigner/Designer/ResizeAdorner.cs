@@ -75,7 +75,9 @@ public class ResizeAdorner : Adorner
 
         double bx = 0, by = 0, bw = 0, bh = 0;
         thumb.DragStarted   += (_, _) => { bx = Vm.X; by = Vm.Y; bw = Vm.Width; bh = Vm.Height; };
-        thumb.DragDelta     += (_, e) => dragAction(e.HorizontalChange, e.VerticalChange);
+        // Locked elements keep their size — guard here as defence-in-depth (the adorner isn't
+        // attached for locked items, but lock can be toggled while a drag is mid-flight).
+        thumb.DragDelta     += (_, e) => { if (!Vm.IsLocked) dragAction(e.HorizontalChange, e.VerticalChange); };
         thumb.DragCompleted += (_, _) =>
         {
             if (Vm.X != bx || Vm.Y != by || Vm.Width != bw || Vm.Height != bh)

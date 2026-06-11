@@ -35,7 +35,7 @@ public class DesignerItem : ContentControl
     private static void OnIsSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var item = (DesignerItem)d;
-        if ((bool)e.NewValue) item.AttachAdorner();
+        if ((bool)e.NewValue && !item.ViewModel.IsLocked) item.AttachAdorner();
         else item.DetachAdorner();
     }
 
@@ -43,6 +43,10 @@ public class DesignerItem : ContentControl
     {
         ViewModel = viewModel;
         DataContext = viewModel;
+
+        // React to lock toggles: drop/show the resize handles and repaint the selection border.
+        // No explicit detach needed — the item and its ViewModel reference each other and die together.
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         // OneWay: ViewModel is always the source of truth; TwoWay here can cause
         // an infinite PropertyChanged loop when NaN values enter (NaN != NaN breaks
@@ -64,12 +68,25 @@ public class DesignerItem : ContentControl
         Background = Brushes.Transparent;
     }
 
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ElementViewModelBase.IsLocked)) return;
+        if (IsSelected)
+        {
+            if (ViewModel.IsLocked) DetachAdorner();
+            else AttachAdorner();
+        }
+        InvalidateVisual();
+    }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
         if (IsSelected)
         {
-            var pen = new Pen(new SolidColorBrush(Color.FromRgb(30, 144, 255)) { Opacity = 0.8 }, 1)
+            // Locked elements show a grey border (no handles) so the operator sees why it won't move.
+            var color = ViewModel.IsLocked ? Color.FromRgb(120, 120, 120) : Color.FromRgb(30, 144, 255);
+            var pen = new Pen(new SolidColorBrush(color) { Opacity = 0.8 }, 1)
             {
                 DashStyle = new DashStyle(new double[] { 4, 2 }, 0)
             };

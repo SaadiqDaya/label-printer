@@ -20,7 +20,7 @@ public class TextElementViewModel : ElementViewModelBase
     private Dictionary<string, string>? _liveFields;
 
     public override ElementType ElementType => ElementType.Text;
-    public override string DisplayName =>
+    protected override string TypeDisplayName =>
         !string.IsNullOrEmpty(BoundField) ? $"Text [{BoundField}]"
         : Text.Length > 18 ? $"Text \"{Text[..18]}…\"" : $"Text \"{Text}\"";
 
@@ -164,6 +164,7 @@ public class TextElementViewModel : ElementViewModelBase
         LayerId = LayerId,
         BackgroundColor = BackgroundColor,
         Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked, GroupId = GroupId,
         Text = Text, BoundField = BoundField, FontFamily = FontFamily,
         FontSize = FontSize, Bold = Bold, Italic = Italic, Underline = Underline,
         Color = Color, Alignment = Alignment, FitToBox = FitToBox, MultiLine = MultiLine
@@ -177,6 +178,7 @@ public class TextElementViewModel : ElementViewModelBase
         LayerId = m.LayerId;
         BackgroundColor = m.BackgroundColor;
         Rotation = m.Rotation;
+        Name = m.Name; IsLocked = m.IsLocked; GroupId = m.GroupId;
         Text = m.Text; BoundField = m.BoundField; FontFamily = m.FontFamily;
         FontSize = m.FontSize; Bold = m.Bold; Italic = m.Italic; Underline = m.Underline;
         Color = m.Color; Alignment = m.Alignment; FitToBox = m.FitToBox; MultiLine = m.MultiLine;

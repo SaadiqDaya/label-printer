@@ -77,6 +77,7 @@ Double-click the LabelDesigner shortcut. The Designer opens with the template li
 | Ctrl+Z / Ctrl+Y | Undo / Redo |
 | Ctrl+C / Ctrl+V | Copy / Paste element |
 | Ctrl+D | Duplicate selected element |
+| Ctrl+G / Ctrl+Shift+G | Group / Ungroup selected elements |
 | Ctrl+M | Manage Fields |
 | Ctrl+P | Print |
 | Delete | Delete selected element(s) |
@@ -100,8 +101,15 @@ Select two or more elements, then use **Arrange**:
 - **Bring to Front / Send to Back** (and Move Forward/Backward for one step)
 - **Duplicate** (Ctrl+D)
 
-### 4.4 Snap to Grid & Zoom
-Toggle **Snap to Grid** and set the grid size in the toolbar. Use the zoom controls (or Ctrl+scroll) to zoom the canvas; this does not change the label size.
+### 4.4 Snap to Grid, Smart Guides & Zoom
+- **Snap to Grid** — toggle in the toolbar and set the grid size; dragging then moves elements in grid steps.
+- **Smart guides** (the **Guides** toolbar toggle, on by default) — while dragging, the selection snaps to other elements' edges and centres and to the canvas edges/centre, and a pink dashed guide line shows what it snapped to. Turn the toggle off for free-hand placement.
+- Use the zoom controls (or Ctrl+scroll) to zoom the canvas; this does not change the label size.
+
+### 4.5 Naming, Locking & Grouping Elements
+- **Name** — give an element a name in the **Element** box at the top of the Properties panel (e.g. "Lot barcode"). The name shows in the Elements list, which helps a lot on busy labels.
+- **Lock** — tick **Locked** in the Properties panel. A locked element can't be moved, resized, or deleted on the canvas (its selection border turns grey and a 🔒 shows in the Elements list) — but it still prints normally. Use it to protect finished artwork from accidental nudges. Untick to edit again.
+- **Group** — select two or more elements and press **Ctrl+G** (Arrange ▸ Group). From then on, clicking any member selects the whole group, and the group moves as one. Groups are **saved with the template**. **Ctrl+Shift+G** (Arrange ▸ Ungroup) dissolves the group. Ctrl-click still toggles a single member in or out of the selection when you need to adjust one element.
 
 ---
 
@@ -120,6 +128,12 @@ Toggle **Snap to Grid** and set the grid size in the toolbar. Use the zoom contr
 
 ### 5.4 Label Setup (size, DPI, printer profile)
 **Template ▸ Resize Canvas** opens **Label Setup**, where you set the label size, **printer resolution (DPI)** (203 or 300 for the ZD621), the **output backend** (GDI or ZPL), and optional **darkness / speed / ZPL host**. See Section 15.
+
+### 5.5 Exporting a Label (PNG / PDF / ZPL)
+**File ▸ Export** renders the label with the **same data the canvas preview shows** (the loaded data row, or the template's test data):
+- **PNG** — an image at the template's DPI (e.g. for a spec sheet or a customer proof).
+- **PDF** — a one-page PDF at the exact label size in mm, pixel-identical to the print preview.
+- **ZPL** — the native ZPL II commands (see Section 16.2).
 
 ---
 
@@ -481,6 +495,33 @@ Routing rule conditions: **Equals**, **Contains**, **StartsWith** ("name begins 
 **Per-folder options** (Settings): **Auto-print** (print on arrival vs wait for the operator) and **Skip bad rows** (print valid rows and report the skipped ones vs refuse the whole job — the safer default).
 
 > The watch folder can live on a network share. Multiple stations may watch the **same** folder safely — the atomic claim guarantees each job prints exactly once.
+
+### 19.7 HTTP Print API (for external systems)
+The Print Station can serve a small local web API, compatible with the **BarTender shim** contract — so a system that already prints through that shim can switch to LabelDesigner by changing **one base URL** in its configuration. Off by default; enable it in **File ▸ Settings ▸ HTTP print API** (takes effect when the Print Station next starts).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness check → `{"status":"ok","service":"LabelDesigner","version":"…"}` |
+| `GET /printers` | Installed printer names → `{"success":true,"printers":[…]}` |
+| `POST /api/print` | Print a job (see below) |
+
+**Print request** (JSON body):
+```json
+{
+  "templatePath": "DoorTreats-50ml.btw",
+  "printerName": "ZDesigner ZD621-203dpi ZPL",
+  "jobName": "Order 1234",
+  "labels": [ { "ProductName": "Mint", "LotNumber": "L1" },
+              { "ProductName": "Mint", "LotNumber": "L1" } ]
+}
+```
+- Each entry in `labels` is **one physical label** — send the same data twice to get two labels.
+- Only the **file name** of `templatePath` matters: `…\DoorTreats-50ml.btw` (or `.lbl`, or a bare name) is matched to the LabelDesigner template **named** `DoorTreats-50ml`. Recreate each `.btw` design once in LabelDesigner under the same name.
+- `printerName` is optional — the template's profile printer, then the station's selected printer, are used otherwise. A missing/offline printer **fails the job loudly**; it never falls back to a different device.
+- The whole request is validated before anything prints (all-or-nothing). Success → `{"success":true,"labelsRendered":N,"printer":"…"}`; failure → `{"success":false,"error":"…"}`.
+- Every printed label lands in the normal print history (source `HTTP`), so reprints work as usual.
+
+**Security:** the API listens on **localhost only** — other machines cannot reach it. Run the calling system on the same PC as the Print Station (that is also how the BarTender shim is deployed).
 
 ---
 

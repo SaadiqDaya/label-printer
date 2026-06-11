@@ -399,6 +399,7 @@ public class DesignerViewModel : ViewModelBase
         if (_clipboard == null) return;
         var model = _clipboard.ToModel();
         model.Id = Guid.NewGuid();
+        model.GroupId = null;   // a pasted copy shouldn't silently join the original's group
         var vm = ElementViewModelBase.Create(model);
         vm.X += 10;
         vm.Y += 10;
@@ -413,6 +414,7 @@ public class DesignerViewModel : ViewModelBase
         if (_selectedElement == null) return;
         var model = _selectedElement.ToModel();
         model.Id = Guid.NewGuid();
+        model.GroupId = null;   // a duplicate shouldn't silently join the original's group
         var vm = ElementViewModelBase.Create(model);
         vm.X += 10;
         vm.Y += 10;
@@ -494,6 +496,42 @@ public class DesignerViewModel : ViewModelBase
         if (actions.Count > 0) UndoManager.Push(new CompositeAction(actions));
     }
 
+    // ─── Persistent groups (Ctrl+G / Ctrl+Shift+G) ───────────────────────────
+    public ICommand GroupCommand   => new RelayCommand(GroupSelected,   () => SelectedElements.Count >= 2);
+    public ICommand UngroupCommand => new RelayCommand(UngroupSelected, CanUngroup);
+
+    private bool CanUngroup() =>
+        SelectedElements.Any(e => e.GroupId != null) || _selectedElement?.GroupId != null;
+
+    /// <summary>Gives every selected element the same GroupId so they select and move as one,
+    /// saved with the template. Re-grouping an existing group's members just re-keys them.</summary>
+    public void GroupSelected()
+    {
+        var sel = Sel();
+        if (sel.Count < 2) return;
+        var old = sel.ToDictionary(e => e, e => e.GroupId);
+        var gid = Guid.NewGuid();
+        foreach (var e in sel) e.GroupId = gid;
+        UndoManager.Push(new GroupAction(old, gid));
+        IsDirty = true;
+    }
+
+    /// <summary>Dissolves every group that has a member in the current selection.</summary>
+    public void UngroupSelected()
+    {
+        var sel = SelectedElements.Count > 0
+            ? Sel()
+            : (_selectedElement != null ? new List<ElementViewModelBase> { _selectedElement } : new());
+        var gids = sel.Where(e => e.GroupId != null).Select(e => e.GroupId!.Value).ToHashSet();
+        if (gids.Count == 0) return;
+
+        var members = Elements.Where(e => e.GroupId.HasValue && gids.Contains(e.GroupId.Value)).ToList();
+        var old = members.ToDictionary(e => e, e => e.GroupId);
+        foreach (var e in members) e.GroupId = null;
+        UndoManager.Push(new GroupAction(old, null));
+        IsDirty = true;
+    }
+
     private void BringToFront()
     {
         if (_selectedElement == null) return;
@@ -513,6 +551,15 @@ public class DesignerViewModel : ViewModelBase
     {
         get => _snapToGrid;
         set => Set(ref _snapToGrid, value);
+    }
+
+    private bool _smartGuides = true;
+    /// <summary>Smart alignment guides while dragging: snaps to other elements' edges/centres and
+    /// the canvas edges/centre, drawing pink guide lines at the match.</summary>
+    public bool SmartGuides
+    {
+        get => _smartGuides;
+        set => Set(ref _smartGuides, value);
     }
 
     public double GridSize
@@ -632,9 +679,11 @@ public class DesignerViewModel : ViewModelBase
     public void DeleteSelected()
     {
         // Prefer the multi-selection set; fall back to the singular selection.
-        var toDelete = SelectedElements.Count > 0
+        // Locked elements are never deleted — unlock them first (Properties panel).
+        var toDelete = (SelectedElements.Count > 0
             ? SelectedElements.ToList()
-            : (_selectedElement != null ? new List<ElementViewModelBase> { _selectedElement } : new List<ElementViewModelBase>());
+            : (_selectedElement != null ? new List<ElementViewModelBase> { _selectedElement } : new List<ElementViewModelBase>()))
+            .Where(e => !e.IsLocked).ToList();
 
         if (toDelete.Count == 0) return;
 

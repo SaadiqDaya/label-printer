@@ -67,6 +67,78 @@ public class MainViewModel : ViewModelBase
         dlg.ShowDialog();
     }
 
+    // ─── Export (PNG / PDF / ZPL) ────────────────────────────────────────────────
+    public ICommand ExportPngCommand => new RelayCommand(ExportPng, () => Designer.Elements.Any());
+    public ICommand ExportPdfCommand => new RelayCommand(ExportPdf, () => Designer.Elements.Any());
+    public ICommand ExportZplCommand => new RelayCommand(ExportZpl, () => Designer.Elements.Any());
+
+    /// <summary>Fields used for export renders: the live data row when one is loaded, else the
+    /// template's test data — the same values the canvas preview shows.</summary>
+    private Dictionary<string, string> ExportFields() =>
+        Designer.CurrentRowFields != null
+            ? new Dictionary<string, string>(Designer.CurrentRowFields, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(Designer.Template.TestData, StringComparer.OrdinalIgnoreCase);
+
+    private void ExportPng()
+    {
+        var dlg = new SaveFileDialog { Filter = "PNG image (*.png)|*.png", FileName = Designer.TemplateName + ".png" };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var template = Designer.ToModel();
+            var bmp = Services.PrintService.RenderPreview(template, ExportFields(), dpi: template.Dpi);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using var fs = File.Create(dlg.FileName);
+            encoder.Save(fs);
+            StatusMessage = $"Exported PNG ({bmp.PixelWidth}×{bmp.PixelHeight} px @ {template.Dpi} dpi): {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Error("PNG export failed.", ex);
+            MessageBox.Show(ex.Message, "PNG export failed");
+        }
+    }
+
+    private void ExportPdf()
+    {
+        var dlg = new SaveFileDialog { Filter = "PDF document (*.pdf)|*.pdf", FileName = Designer.TemplateName + ".pdf" };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var template = Designer.ToModel();
+            var bmp = Services.PrintService.RenderPreview(template, ExportFields(), dpi: template.Dpi);
+            Services.PdfExporter.Write(dlg.FileName, bmp, template.WidthMm, template.HeightMm);
+            StatusMessage = $"Exported PDF ({template.WidthMm:F1}×{template.HeightMm:F1} mm): {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Error("PDF export failed.", ex);
+            MessageBox.Show(ex.Message, "PDF export failed");
+        }
+    }
+
+    private void ExportZpl()
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "ZPL (*.zpl)|*.zpl|Text (*.txt)|*.txt",
+            FileName = Designer.TemplateName + ".zpl"
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var zpl = Services.PrintService.RenderZpl(Designer.ToModel(), ExportFields());
+            File.WriteAllText(dlg.FileName, zpl);
+            StatusMessage = $"Exported ZPL ({zpl.Length} chars): {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Error("ZPL export failed.", ex);
+            MessageBox.Show(ex.Message, "ZPL export failed");
+        }
+    }
+
     // ─── Element commands (delegate to Designer) ─────────────────────────────────
     public ICommand AddTextCommand        => Designer.AddTextCommand;
     public ICommand AddBarcodeCommand     => Designer.AddBarcodeCommand;

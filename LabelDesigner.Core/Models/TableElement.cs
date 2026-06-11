@@ -35,6 +35,8 @@ public class TableElement : LabelElement
         LayerId           = LayerId,
         BackgroundColor   = BackgroundColor,
         Rotation          = Rotation,
+        Name              = Name,
+        IsLocked          = IsLocked,   // GroupId intentionally NOT copied: a clone shouldn't silently join the group
         Columns           = Columns.Select(c => new TableColumn
                             { Header = c.Header, BoundField = c.BoundField, Width = c.Width }).ToList(),
         RowHeight         = RowHeight,

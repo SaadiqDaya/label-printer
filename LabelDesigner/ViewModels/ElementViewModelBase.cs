@@ -26,8 +26,27 @@ public abstract class ElementViewModelBase : ViewModelBase
     /// <summary>Layers available for assignment — populated by DesignerViewModel.</summary>
     public ObservableCollection<LayerViewModel> AvailableLayers { get; } = new();
 
-    /// <summary>Short label shown in the Element Explorer tab.</summary>
-    public virtual string DisplayName => ElementType.ToString();
+    /// <summary>Short label shown in the Element Explorer tab. A user-given Name wins over the type-derived label.</summary>
+    public string DisplayName => string.IsNullOrWhiteSpace(_name) ? TypeDisplayName : _name;
+
+    /// <summary>Type-derived fallback label, used when the element has no user-given Name.</summary>
+    protected virtual string TypeDisplayName => ElementType.ToString();
+
+    private string _name = "";
+    /// <summary>Optional user-given name for the Element Explorer (e.g. "Lot barcode").</summary>
+    public string Name
+    {
+        get => _name;
+        set { if (Set(ref _name, value ?? "")) OnPropertyChanged(nameof(DisplayName)); }
+    }
+
+    private bool _isLocked;
+    /// <summary>Locked elements can't be moved, resized or deleted on the canvas. They still print.</summary>
+    public bool IsLocked { get => _isLocked; set => Set(ref _isLocked, value); }
+
+    private Guid? _groupId;
+    /// <summary>Persistent group membership: same GroupId = selects and moves as one. Null = ungrouped.</summary>
+    public Guid? GroupId { get => _groupId; set => Set(ref _groupId, value); }
 
     // ─── Print condition ───────────────────────────────────────────────────────
 

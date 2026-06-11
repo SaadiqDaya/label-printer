@@ -47,6 +47,8 @@ public class SettingsViewModel : ViewModelBase
     private string _sharedDir;
     private string _status = "";
     private WatchFolderRowViewModel? _selectedWatchFolder;
+    private bool _httpApiEnabled;
+    private string _httpApiPort = "3100";
 
     /// <summary>True when env/appsettings pinned the data dir — the choice is then read-only.</summary>
     public bool IsAdminLocked { get; } = AppConfig.IsDataDirAdminLocked;
@@ -64,6 +66,10 @@ public class SettingsViewModel : ViewModelBase
 
     public string SharedDir { get => _sharedDir; set => Set(ref _sharedDir, value); }
     public string Status { get => _status; set => Set(ref _status, value); }
+
+    /// <summary>Shim-compatible HTTP print API, served by the Print Station on localhost.</summary>
+    public bool HttpApiEnabled { get => _httpApiEnabled; set => Set(ref _httpApiEnabled, value); }
+    public string HttpApiPort { get => _httpApiPort; set => Set(ref _httpApiPort, value); }
 
     public ObservableCollection<WatchFolderRowViewModel> WatchFolders { get; } = new();
 
@@ -90,6 +96,8 @@ public class SettingsViewModel : ViewModelBase
         var s = UserSettings.Current;
         _useShared = string.Equals(s.SerialStorageMode, "Shared", StringComparison.OrdinalIgnoreCase);
         _sharedDir = s.SharedDataDir;
+        _httpApiEnabled = s.HttpApiEnabled;
+        _httpApiPort = s.HttpApiPort.ToString();
         foreach (var wf in s.WatchFolders) WatchFolders.Add(new WatchFolderRowViewModel(wf));
 
         try
@@ -153,6 +161,12 @@ public class SettingsViewModel : ViewModelBase
             }
         }
 
+        if (!int.TryParse(HttpApiPort?.Trim(), out var port) || port < 1 || port > 65535)
+        {
+            Status = "HTTP API port must be a number between 1 and 65535.";
+            return;
+        }
+
         var current = UserSettings.Current;
         UserSettings.Save(new UserSettings.Data
         {
@@ -162,9 +176,11 @@ public class SettingsViewModel : ViewModelBase
             WatchFolders      = WatchFolders
                 .Where(w => !string.IsNullOrWhiteSpace(w.Path))
                 .Select(w => w.ToConfig()).ToList(),
+            HttpApiEnabled    = HttpApiEnabled,
+            HttpApiPort       = port,
         });
         LogService.Info($"Settings saved: storage={(UseShared ? "Shared: " + SharedDir : "Local")}, " +
-                        $"{WatchFolders.Count} watch folder(s).");
+                        $"{WatchFolders.Count} watch folder(s), HTTP API {(HttpApiEnabled ? $"ON :{port}" : "off")}.");
         CloseRequested?.Invoke(this, true);
     }
 

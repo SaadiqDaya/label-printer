@@ -37,6 +37,7 @@ public class ImageElement : LabelElement
     {
         Id = Guid.NewGuid(), X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
         PrintCondition = PrintCondition, LayerId = LayerId, BackgroundColor = BackgroundColor, Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked,   // GroupId intentionally NOT copied: a clone shouldn't silently join the group
         ImagePath = ImagePath, BoundField = BoundField, ImageBaseFolder = ImageBaseFolder,
         MaintainAspectRatio = MaintainAspectRatio, Opacity = Opacity,
         RenderMode = RenderMode, Invert = Invert, Threshold = Threshold

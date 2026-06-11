@@ -12,7 +12,7 @@ public class ShapeElementViewModel : ElementViewModelBase
     private double _cornerRadius;
 
     public override ElementType ElementType => ElementType.Rectangle;
-    public override string DisplayName => $"Shape ({ShapeType})";
+    protected override string TypeDisplayName => $"Shape ({ShapeType})";
 
     public ShapeType ShapeType
     {
@@ -90,6 +90,7 @@ public class ShapeElementViewModel : ElementViewModelBase
         LayerId = LayerId,
         BackgroundColor = BackgroundColor,
         Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked, GroupId = GroupId,
         ShapeType = ShapeType, FillColor = FillColor, StrokeColor = StrokeColor,
         StrokeThickness = StrokeThickness, CornerRadius = CornerRadius,
         LineReverseY = LineReverseY
@@ -103,6 +104,7 @@ public class ShapeElementViewModel : ElementViewModelBase
         LayerId = m.LayerId;
         BackgroundColor = m.BackgroundColor;
         Rotation = m.Rotation;
+        Name = m.Name; IsLocked = m.IsLocked; GroupId = m.GroupId;
         ShapeType = m.ShapeType; FillColor = m.FillColor; StrokeColor = m.StrokeColor;
         StrokeThickness = m.StrokeThickness; CornerRadius = m.CornerRadius;
         LineReverseY = m.LineReverseY;

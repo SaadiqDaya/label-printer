@@ -49,6 +49,15 @@ public abstract class LabelElement
     /// </summary>
     public double Rotation { get; set; } = 0;
 
+    /// <summary>Optional user-given name shown in the Element Explorer (e.g. "Lot barcode"). Blank = type-derived label.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>Locked elements can't be moved, resized or deleted on the design canvas. They still print.</summary>
+    public bool IsLocked { get; set; }
+
+    /// <summary>Persistent group membership: elements sharing a GroupId select and move as one. Null = ungrouped.</summary>
+    public Guid? GroupId { get; set; }
+
     [JsonIgnore]
     public abstract ElementType Type { get; }
 

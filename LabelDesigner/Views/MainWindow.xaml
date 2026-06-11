@@ -37,6 +37,14 @@
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Import from _BarTender (.btw)…" Command="{Binding ImportFromBarTenderCommand}" />
+                <MenuItem Header="_Export">
+                    <MenuItem Header="Label as P_NG…" Command="{Binding ExportPngCommand}"
+                              ToolTip="Renders the label (current preview data) to a PNG at the template's DPI"/>
+                    <MenuItem Header="Label as P_DF…" Command="{Binding ExportPdfCommand}"
+                              ToolTip="One-page PDF at the exact label size — pixel-identical to the print preview"/>
+                    <MenuItem Header="Label as _ZPL…" Command="{Binding ExportZplCommand}"
+                              ToolTip="Native ZPL II commands for inspection or sending to a Zebra"/>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="E_xit" Click="Exit_Click" />
             </MenuItem>
@@ -51,6 +59,10 @@
             </MenuItem>
             <MenuItem Header="_Arrange">
                 <MenuItem Header="_Duplicate"            Command="{Binding Designer.DuplicateCommand}"   InputGestureText="Ctrl+D"/>
+                <Separator/>
+                <MenuItem Header="_Group"                Command="{Binding Designer.GroupCommand}"       InputGestureText="Ctrl+G"
+                          ToolTip="Selected elements select and move as one (saved with the template)"/>
+                <MenuItem Header="_Ungroup"              Command="{Binding Designer.UngroupCommand}"     InputGestureText="Ctrl+Shift+G"/>
                 <Separator/>
                 <MenuItem Header="Align _Left"           Command="{Binding Designer.AlignLeftCommand}"/>
                 <MenuItem Header="Align _Right"          Command="{Binding Designer.AlignRightCommand}"/>
@@ -95,6 +107,9 @@
             <Separator/>
             <Button ToolTip="Delete selected (Del)" Command="{Binding DeleteSelectedCommand}" Padding="6,2" Background="#FFDDDD">Delete</Button>
             <Separator/>
+            <ToggleButton ToolTip="Smart alignment guides — snap to other elements' edges/centres while dragging"
+                          IsChecked="{Binding Designer.SmartGuides}"
+                          Padding="6,2">Guides</ToggleButton>
             <ToggleButton ToolTip="Snap elements to grid when dragging"
                           IsChecked="{Binding Designer.SnapToGrid}"
                           Padding="6,2">Snap</ToggleButton>
@@ -171,6 +186,9 @@
                                                   DisplayMemberPath="Name"
                                                   SelectedItem="{Binding SelectedLayer}"
                                                   ToolTip="Layer assignment"/>
+                                        <TextBlock DockPanel.Dock="Left" Text="🔒" FontSize="10" Margin="0,0,2,0"
+                                                   VerticalAlignment="Center" ToolTip="Locked"
+                                                   Visibility="{Binding IsLocked, Converter={StaticResource BoolToVisibility}}"/>
                                         <TextBlock Text="{Binding DisplayName}" FontSize="12"
                                                    Margin="2,0" VerticalAlignment="Center"/>
                                     </DockPanel>

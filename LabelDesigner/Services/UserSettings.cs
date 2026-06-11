@@ -41,6 +41,11 @@ public static class UserSettings
         public string OperatorName { get; set; } = "";
 
         public List<WatchFolderConfig> WatchFolders { get; set; } = new();
+
+        /// <summary>BarTender-shim-compatible HTTP print API (localhost only), served by the Print
+        /// Station: GET /health, GET /printers, POST /api/print. Off by default.</summary>
+        public bool HttpApiEnabled { get; set; }
+        public int HttpApiPort { get; set; } = 3100;
     }
 
     private static readonly object _lock = new();
@@ -66,6 +71,7 @@ public static class UserSettings
                 _cache ??= new Data();
                 _cache.WatchFolders ??= new();      // settings.json predating this field
                 _cache.OperatorName ??= "";
+                if (_cache.HttpApiPort <= 0 || _cache.HttpApiPort > 65535) _cache.HttpApiPort = 3100;
                 return _cache;
             }
         }

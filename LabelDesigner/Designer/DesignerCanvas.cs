@@ -22,6 +22,11 @@ public class DesignerCanvas : Canvas
     /// <summary>Snapshot of starting positions for every selected item so we can group-drag.</summary>
     private Dictionary<DesignerItem, Point>? _dragGroupOrigins;
 
+    // ─── Smart-snap guide state (built at drag start, cleared on mouse up) ──
+    private const double SnapThreshold = 3.0;   // design px (96-DPI); at the usual 4× zoom ≈ 12 screen px
+    private List<double>? _snapTargetsX, _snapTargetsY;
+    private System.Windows.Shapes.Line? _guideV, _guideH;
+
     /// <summary>All currently selected items (the primary is also a member).</summary>
     private readonly HashSet<DesignerItem> _selectedItems = new();
 
@@ -65,6 +70,47 @@ public class DesignerCanvas : Canvas
         }
         SelectedItem = item;
         PushSelectionToVm();
+    }
+
+    /// <summary>
+    /// Selects an item plus every other member of its persistent group (clicking any member
+    /// grabs the whole group). Falls back to single selection for ungrouped elements.
+    /// </summary>
+    private void SelectWithGroup(DesignerItem item)
+    {
+        var gid = item.ViewModel.GroupId;
+        if (gid == null) { ReplaceSelection(item); return; }
+
+        foreach (var i in _selectedItems) { i.IsSelected = false; i.ViewModel.IsSelected = false; }
+        _selectedItems.Clear();
+        foreach (var di in Children.OfType<DesignerItem>().Where(d => d.ViewModel.GroupId == gid))
+        {
+            _selectedItems.Add(di);
+            di.IsSelected = true;
+            di.ViewModel.IsSelected = true;
+        }
+        SelectedItem = item;
+        PushSelectionToVm();
+    }
+
+    /// <summary>Adds the remaining members of any partially-selected group (rubber-band semantics).</summary>
+    private void ExpandSelectionToGroups()
+    {
+        var gids = _selectedItems
+            .Select(i => i.ViewModel.GroupId)
+            .Where(g => g != null)
+            .Select(g => g!.Value)
+            .ToHashSet();
+        if (gids.Count == 0) return;
+        foreach (var di in Children.OfType<DesignerItem>()
+                     .Where(d => d.ViewModel.GroupId.HasValue && gids.Contains(d.ViewModel.GroupId.Value)))
+        {
+            if (_selectedItems.Add(di))
+            {
+                di.IsSelected = true;
+                di.ViewModel.IsSelected = true;
+            }
+        }
     }
 
     /// <summary>Toggles an item's presence in the multi-selection (Ctrl-click semantic).</summary>
@@ -279,6 +325,7 @@ public class DesignerCanvas : Canvas
                 // Selection was cleared at drag start; nothing to do.
             }
         }
+        ExpandSelectionToGroups();   // a rubber-band that touches part of a group selects all of it
         PushSelectionToVm();
     }
 
@@ -387,8 +434,10 @@ public class DesignerCanvas : Canvas
             double dy = e.Key == Key.Up   ? -step : e.Key == Key.Down  ? step : 0;
 
             // Clamp the group: the leftmost/topmost item can't go below 0, the rightmost/bottommost
-            // can't exceed the canvas. Apply the same delta to all so the shape of the selection is preserved.
-            var items = _selectedItems.ToList();
+            // can't exceed the canvas. Apply the same delta to all so the shape of the selection is
+            // preserved. Locked members of the selection stay put.
+            var items = _selectedItems.Where(i => !i.ViewModel.IsLocked).ToList();
+            if (items.Count == 0) { e.Handled = true; return; }
             double minX = items.Min(i => i.ViewModel.X);
             double minY = items.Min(i => i.ViewModel.Y);
             if (DataContext is DesignerViewModel d)
@@ -473,19 +522,45 @@ public class DesignerCanvas : Canvas
             return;
         }
 
-        // Plain click on an unselected item replaces selection. Click on an already-selected
-        // item (in multi-mode) preserves the set so the user can drag the whole group.
-        if (!_selectedItems.Contains(item)) ReplaceSelection(item);
+        // Plain click on an unselected item replaces selection (pulling in its whole persistent
+        // group). Click on an already-selected item (in multi-mode) preserves the set so the user
+        // can drag the whole group.
+        if (!_selectedItems.Contains(item)) SelectWithGroup(item);
         else SelectedItem = item;
+
+        // Locked elements can be selected (to inspect/unlock) but never dragged.
+        if (item.ViewModel.IsLocked) { Focus(); e.Handled = true; return; }
 
         _dragStartMouse   = e.GetPosition(this);
         _dragStartElement = new Point(item.ViewModel.X, item.ViewModel.Y);
-        // Snapshot origins for the full group so each item moves by the same delta.
-        _dragGroupOrigins = _selectedItems.ToDictionary(i => i, i => new Point(i.ViewModel.X, i.ViewModel.Y));
+        // Snapshot origins for the movable part of the selection (locked members stay put).
+        _dragGroupOrigins = _selectedItems.Where(i => !i.ViewModel.IsLocked)
+                                          .ToDictionary(i => i, i => new Point(i.ViewModel.X, i.ViewModel.Y));
+        BuildSnapTargets();
         _isDragging = true;
         item.CaptureMouse();
         Focus();
         e.Handled = true;
+    }
+
+    /// <summary>Collects the stationary edges (other elements + canvas) that the drag can snap to.</summary>
+    private void BuildSnapTargets()
+    {
+        _snapTargetsX = null;
+        _snapTargetsY = null;
+        if (DataContext is not DesignerViewModel vm || !vm.SmartGuides) return;
+
+        var xs = new List<double> { 0, vm.CanvasWidthPx, vm.CanvasWidthPx / 2 };
+        var ys = new List<double> { 0, vm.CanvasHeightPx, vm.CanvasHeightPx / 2 };
+        foreach (var di in Children.OfType<DesignerItem>()
+                     .Where(d => !_selectedItems.Contains(d) && d.Visibility == Visibility.Visible))
+        {
+            var v = di.ViewModel;
+            xs.Add(v.X); xs.Add(v.X + v.Width);  xs.Add(v.X + v.Width / 2);
+            ys.Add(v.Y); ys.Add(v.Y + v.Height); ys.Add(v.Y + v.Height / 2);
+        }
+        _snapTargetsX = xs;
+        _snapTargetsY = ys;
     }
 
     private void Item_MouseMove(object sender, MouseEventArgs e)
@@ -503,6 +578,8 @@ public class DesignerCanvas : Canvas
             dy = Math.Round(dy / g) * g;
         }
 
+        ApplySmartSnap(ref dx, ref dy);
+
         // Move every selected item by the same delta, clamping so nothing goes negative.
         double minX = _dragGroupOrigins.Values.Min(p => p.X);
         double minY = _dragGroupOrigins.Values.Min(p => p.Y);
@@ -514,6 +591,71 @@ public class DesignerCanvas : Canvas
             di.ViewModel.X = origin.X + dx;
             di.ViewModel.Y = origin.Y + dy;
         }
+    }
+
+    /// <summary>Nudges the drag delta so the moving selection's bounding-box edges/centre align with
+    /// nearby element or canvas edges, and shows pink guide lines at the matched coordinates.</summary>
+    private void ApplySmartSnap(ref double dx, ref double dy)
+    {
+        if (_snapTargetsX == null || _snapTargetsY == null || _dragGroupOrigins == null || _dragGroupOrigins.Count == 0)
+        {
+            HideGuides();
+            return;
+        }
+
+        // Bounding box of the selection at its ORIGIN, then shifted by the proposed delta.
+        double oLeft   = _dragGroupOrigins.Min(p => p.Value.X);
+        double oTop    = _dragGroupOrigins.Min(p => p.Value.Y);
+        double oRight  = _dragGroupOrigins.Max(p => p.Value.X + p.Key.ViewModel.Width);
+        double oBottom = _dragGroupOrigins.Max(p => p.Value.Y + p.Key.ViewModel.Height);
+
+        var movingXs = new[] { oLeft + dx, oRight + dx, (oLeft + oRight) / 2 + dx };
+        var movingYs = new[] { oTop + dy, oBottom + dy, (oTop + oBottom) / 2 + dy };
+
+        var (cx, gx) = SnapSolver.Solve(movingXs, _snapTargetsX, SnapThreshold);
+        var (cy, gy) = SnapSolver.Solve(movingYs, _snapTargetsY, SnapThreshold);
+        dx += cx;
+        dy += cy;
+
+        UpdateGuide(ref _guideV, vertical: true,  gx);
+        UpdateGuide(ref _guideH, vertical: false, gy);
+    }
+
+    private void UpdateGuide(ref System.Windows.Shapes.Line? guide, bool vertical, double? at)
+    {
+        if (at == null)
+        {
+            if (guide != null) { Children.Remove(guide); guide = null; }
+            return;
+        }
+        if (guide == null)
+        {
+            guide = new System.Windows.Shapes.Line
+            {
+                Stroke           = new SolidColorBrush(Color.FromRgb(255, 64, 129)),
+                StrokeThickness  = 0.5,
+                StrokeDashArray  = new DoubleCollection { 4, 3 },
+                IsHitTestVisible = false
+            };
+            Panel.SetZIndex(guide, int.MaxValue);
+            Children.Add(guide);
+        }
+        if (vertical)
+        {
+            guide.X1 = guide.X2 = at.Value;
+            guide.Y1 = 0; guide.Y2 = ActualHeight;
+        }
+        else
+        {
+            guide.Y1 = guide.Y2 = at.Value;
+            guide.X1 = 0; guide.X2 = ActualWidth;
+        }
+    }
+
+    private void HideGuides()
+    {
+        if (_guideV != null) { Children.Remove(_guideV); _guideV = null; }
+        if (_guideH != null) { Children.Remove(_guideH); _guideH = null; }
     }
 
     private void Item_MouseUp(object sender, MouseButtonEventArgs e)
@@ -537,6 +679,9 @@ public class DesignerCanvas : Canvas
             ((DesignerItem)sender).ReleaseMouseCapture();
             _isDragging = false;
             _dragGroupOrigins = null;
+            _snapTargetsX = null;
+            _snapTargetsY = null;
+            HideGuides();
         }
     }
 

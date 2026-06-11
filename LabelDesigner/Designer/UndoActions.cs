@@ -36,6 +36,13 @@ internal sealed class CompositeAction(IReadOnlyList<IUndoAction> actions) : IUnd
     public void Redo() { foreach (var a in actions) a.Redo(); }
 }
 
+/// <summary>Undo/redo for Group (newId = the new group) and Ungroup (newId = null).</summary>
+internal sealed class GroupAction(IReadOnlyDictionary<ElementViewModelBase, Guid?> oldIds, Guid? newId) : IUndoAction
+{
+    public void Undo() { foreach (var (vm, g) in oldIds) vm.GroupId = g; }
+    public void Redo() { foreach (var vm in oldIds.Keys) vm.GroupId = newId; }
+}
+
 internal sealed class AddElementAction(ElementViewModelBase vm, DesignerViewModel designer) : IUndoAction
 {
     public void Undo() => designer.RemoveElement(vm);

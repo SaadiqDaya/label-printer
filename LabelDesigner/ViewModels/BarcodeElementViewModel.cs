@@ -21,7 +21,7 @@ public class BarcodeElementViewModel : ElementViewModelBase
     private BitmapSource? _previewBarcodeImage;  // non-null when live data is active
 
     public override ElementType ElementType => ElementType.Barcode;
-    public override string DisplayName =>
+    protected override string TypeDisplayName =>
         !string.IsNullOrEmpty(BoundField) ? $"Barcode [{BoundField}]" : $"Barcode \"{BarcodeValue}\"";
 
     public string BarcodeValue
@@ -149,6 +149,7 @@ public class BarcodeElementViewModel : ElementViewModelBase
         PrintCondition = PrintCondition,
         BackgroundColor = BackgroundColor,
         Rotation = Rotation,
+        Name = Name, IsLocked = IsLocked, GroupId = GroupId,
         BarcodeValue = BarcodeValue, BoundField = BoundField, Format = Format,
         ShowText = ShowText, TextFontFamily = TextFontFamily, TextFontSize = TextFontSize,
         XDimensionMm = XDimensionMm, QuietZoneMm = QuietZoneMm, ErrorCorrectionLevel = ErrorCorrectionLevel
@@ -162,6 +163,7 @@ public class BarcodeElementViewModel : ElementViewModelBase
         PrintCondition = m.PrintCondition;
         BackgroundColor = m.BackgroundColor;
         Rotation = m.Rotation;
+        Name = m.Name; IsLocked = m.IsLocked; GroupId = m.GroupId;
         BarcodeValue = m.BarcodeValue; BoundField = m.BoundField; Format = m.Format;
         ShowText = m.ShowText; TextFontFamily = m.TextFontFamily; TextFontSize = m.TextFontSize;
         XDimensionMm = m.XDimensionMm; QuietZoneMm = m.QuietZoneMm; ErrorCorrectionLevel = m.ErrorCorrectionLevel;

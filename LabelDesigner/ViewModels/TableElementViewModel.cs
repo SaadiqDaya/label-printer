@@ -85,7 +85,7 @@ public class TableElementViewModel : ElementViewModelBase
     private Dictionary<string, string>? _liveFields;
 
     public override ElementType ElementType => ElementType.Table;
-    public override string DisplayName =>
+    protected override string TypeDisplayName =>
         $"Table ({Columns.Count} col{(Columns.Count == 1 ? "" : "s")})";
 
     public ObservableCollection<TableColumnViewModel> Columns { get; } = new();
@@ -223,6 +223,9 @@ public class TableElementViewModel : ElementViewModelBase
         _model.LayerId        = LayerId;
         _model.BackgroundColor = BackgroundColor;
         _model.Rotation       = Rotation;
+        _model.Name           = Name;
+        _model.IsLocked       = IsLocked;
+        _model.GroupId        = GroupId;
         _model.Columns    = Columns.Select(c => c.ToModel()).ToList();
         _model.StaticRows = Rows.Select(r => r.Cells.Select(c => c.Value).ToList()).ToList();
         return _model;
@@ -242,6 +245,9 @@ public class TableElementViewModel : ElementViewModelBase
         PrintCondition = te.PrintCondition;
         BackgroundColor = te.BackgroundColor;
         Rotation       = te.Rotation;
+        Name           = te.Name;
+        IsLocked       = te.IsLocked;
+        GroupId        = te.GroupId;
 
         LayerId = te.LayerId;
 

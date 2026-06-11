@@ -52,6 +52,8 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(_vm.Designer.CopyCommand,           Key.C,      ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(_vm.Designer.PasteCommand,          Key.V,      ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(_vm.Designer.DuplicateCommand,       Key.D,      ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(_vm.Designer.GroupCommand,           Key.G,      ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(_vm.Designer.UngroupCommand,         Key.G,      ModifierKeys.Control | ModifierKeys.Shift));
     }
 
     // ─── Named handlers (so OnClosed can -= them) ────────────────────────────
