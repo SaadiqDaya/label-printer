@@ -29,6 +29,16 @@
                           IsEditable="True"/>
             </Grid>
 
+            <!-- Sheet mode: layout info + where to start on a part-used sheet -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                        Visibility="{Binding IsSheetTemplate, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding SheetInfo}" VerticalAlignment="Center" FontSize="11" Foreground="#555"/>
+                <TextBlock Text="Start at label #" VerticalAlignment="Center" Margin="14,0,4,0"/>
+                <TextBox Width="44" Padding="3,2"
+                         Text="{Binding StartLabelNumber, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Cell where printing starts on the FIRST sheet — use up a part-used Avery sheet (1 = top-left)"/>
+            </StackPanel>
+
             <!-- Print scope: this record vs. all loaded records -->
             <StackPanel Margin="0,0,0,10"
                         Visibility="{Binding HasAllRecords, Converter={StaticResource BoolToVisibility}}">
@@ -151,6 +161,8 @@
                            Margin="12"
                            Stretch="Fill"
                            Source="{Binding PreviewImage}"
+                           Width="{Binding PreviewDisplayWidth}"
+                           Height="{Binding PreviewDisplayHeight}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality">
                         <Image.LayoutTransform>

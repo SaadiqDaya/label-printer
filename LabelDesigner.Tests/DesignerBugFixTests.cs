@@ -1,5 +1,6 @@
 using LabelDesigner.Services;
 using LabelDesigner.ViewModels;
+using System.IO;
 using System.Windows;
 using Xunit;
 
@@ -162,6 +163,176 @@ public class DatabaseFieldSourceTests
         // DatabaseField needs row data; the row-independent Resolve must not emit a bogus value.
         var resolved = Helpers.DataSourceResolver.Resolve(new[] { DbField("ProductName", "Col") });
         Assert.False(resolved.ContainsKey("ProductName"));
+    }
+}
+
+public class PageLayoutTests
+{
+    [Fact]
+    public void CellOrigin_AcrossFirst_WalksColumnsThenRows()
+    {
+        var p = new Core.Models.PageLayout
+        {
+            Rows = 2, Columns = 3, MarginLeftMm = 5, MarginTopMm = 10, GutterXMm = 2, GutterYMm = 4
+        };
+        // label 50 × 20 → pitch X = 52, pitch Y = 24
+        Assert.Equal((5.0, 10.0),  p.CellOriginMm(0, 50, 20));
+        Assert.Equal((57.0, 10.0), p.CellOriginMm(1, 50, 20));
+        Assert.Equal((109.0, 10.0), p.CellOriginMm(2, 50, 20));
+        Assert.Equal((5.0, 34.0),  p.CellOriginMm(3, 50, 20));   // wraps to row 2
+    }
+
+    [Fact]
+    public void CellOrigin_DownFirst_WalksRowsThenColumns()
+    {
+        var p = new Core.Models.PageLayout { Rows = 2, Columns = 3, FillAcrossFirst = false };
+        Assert.Equal((0.0, 0.0),  p.CellOriginMm(0, 10, 10));
+        Assert.Equal((0.0, 10.0), p.CellOriginMm(1, 10, 10));    // down first
+        Assert.Equal((10.0, 0.0), p.CellOriginMm(2, 10, 10));    // then next column
+    }
+
+    [Fact]
+    public void CellOrigin_MirrorColumns_FlipsLeftRight_ForDuplexBacks()
+    {
+        var p = new Core.Models.PageLayout { Rows = 1, Columns = 3 };
+        // Cell 0's back must land where cell 2 sits (long-edge flip), same row.
+        Assert.Equal(p.CellOriginMm(2, 10, 10), p.CellOriginMm(0, 10, 10, mirrorColumns: true));
+        Assert.Equal(p.CellOriginMm(1, 10, 10), p.CellOriginMm(1, 10, 10, mirrorColumns: true));
+    }
+
+    [Fact]
+    public void Avery5160_Is30UpOnLetter_AndLastCellFits()
+    {
+        var p = Core.Models.PageLayout.Avery5160();
+        Assert.Equal(30, p.CellsPerPage);
+        var (x, y) = p.CellOriginMm(29, 66.7, 25.4);   // bottom-right label
+        Assert.True(x + 66.7 <= p.PageWidthMm + 0.01, $"right edge {x + 66.7} exceeds page {p.PageWidthMm}");
+        Assert.True(y + 25.4 <= p.PageHeightMm + 0.01, $"bottom edge {y + 25.4} exceeds page {p.PageHeightMm}");
+    }
+
+    [Fact]
+    public void SameGridAs_ComparesGeometryOnly()
+    {
+        var a = Core.Models.PageLayout.Avery5160();
+        var b = Core.Models.PageLayout.Avery5160();
+        b.BackTemplateName = "Some Back";            // not part of the grid
+        Assert.True(a.SameGridAs(b));
+        b.GutterXMm += 1;
+        Assert.False(a.SameGridAs(b));
+        Assert.False(a.SameGridAs(null));
+    }
+
+    [Fact]
+    public void PageLayout_SurvivesTemplateRoundTrip_AndOldTemplatesLoadWithNull()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ld-page-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var t = new Core.Models.LabelTemplate { Name = "Sheet", WidthMm = 66.7, HeightMm = 25.4 };
+            t.Page = Core.Models.PageLayout.Avery5160();
+            t.Page.BackTemplateName = "Backside";
+
+            var svc = new Core.Services.TemplateService(dir);
+            var path = Path.Combine(dir, "s.lbl");
+            svc.Save(t, path);
+            var loaded = svc.Load(path)!;
+
+            Assert.NotNull(loaded.Page);
+            Assert.Equal(30, loaded.Page!.CellsPerPage);
+            Assert.Equal("Backside", loaded.Page.BackTemplateName);
+            Assert.True(loaded.Page.SameGridAs(t.Page));
+
+            // Templates saved before Page existed must load with Page == null (direct printing).
+            var legacy = System.Text.Json.JsonSerializer.Deserialize<Core.Models.LabelTemplate>(
+                """{ "Name": "Old", "WidthMm": 50.8, "HeightMm": 25.4 }""",
+                Core.Services.TemplateService.JsonOptions)!;
+            Assert.Null(legacy.Page);
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { } }
+    }
+}
+
+public class SheetCompositionTests
+{
+    /// <summary>Runs WPF visual-tree code on an STA thread (xunit runs MTA).</summary>
+    private static void RunSta(Action action)
+    {
+        Exception? error = null;
+        var t = new System.Threading.Thread(() => { try { action(); } catch (Exception ex) { error = ex; } });
+        t.SetApartmentState(System.Threading.ApartmentState.STA);
+        t.Start();
+        t.Join();
+        if (error != null) throw error;
+    }
+
+    private static Core.Models.LabelTemplate BlackLabelOnAvery() => new()
+    {
+        Name = "SheetTest", WidthMm = 66.7, HeightMm = 25.4,
+        Page = Core.Models.PageLayout.Avery5160(),
+        Elements =
+        {
+            new Core.Models.ShapeElement
+            {
+                X = 0, Y = 0,
+                Width = Core.Models.LabelTemplate.MmToPixels(66.7),
+                Height = Core.Models.LabelTemplate.MmToPixels(25.4),
+                FillColor = "#000000", StrokeColor = "#000000"
+            }
+        }
+    };
+
+    private static bool IsDarkAtMm(System.Windows.Media.Imaging.BitmapSource bmp, double xMm, double yMm)
+    {
+        int px = (int)(Core.Models.LabelTemplate.MmToPixels(xMm) * bmp.DpiX / 96.0);
+        int py = (int)(Core.Models.LabelTemplate.MmToPixels(yMm) * bmp.DpiY / 96.0);
+        var pixel = new byte[4];
+        var crop = new System.Windows.Media.Imaging.CroppedBitmap(bmp, new System.Windows.Int32Rect(px, py, 1, 1));
+        var fmt = new System.Windows.Media.Imaging.FormatConvertedBitmap(crop, System.Windows.Media.PixelFormats.Bgra32, null, 0);
+        fmt.CopyPixels(pixel, 4, 0);
+        return pixel[0] < 100 && pixel[1] < 100 && pixel[2] < 100;
+    }
+
+    [Fact]
+    public void RenderSheetPreview_PlacesLabelsInTheRightCells()
+    {
+        RunSta(() =>
+        {
+            var t = BlackLabelOnAvery();
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var labels = new (Core.Models.LabelTemplate, Dictionary<string, string>)[] { (t, fields), (t, fields) };
+
+            var bmp = PrintService.RenderSheetPreview(t, labels, startCell: 0, dpi: 96);
+
+            // Page is Letter-sized.
+            Assert.Equal((int)Core.Models.LabelTemplate.MmToPixels(215.9), bmp.PixelWidth);
+
+            var p = t.Page!;
+            var c0 = p.CellOriginMm(0, 66.7, 25.4);
+            var c1 = p.CellOriginMm(1, 66.7, 25.4);
+            var c2 = p.CellOriginMm(2, 66.7, 25.4);
+            Assert.True(IsDarkAtMm(bmp, c0.XMm + 33, c0.YMm + 12), "cell 0 should hold label 1");
+            Assert.True(IsDarkAtMm(bmp, c1.XMm + 33, c1.YMm + 12), "cell 1 should hold label 2");
+            Assert.False(IsDarkAtMm(bmp, c2.XMm + 33, c2.YMm + 12), "cell 2 should be empty");
+        });
+    }
+
+    [Fact]
+    public void RenderSheetPreview_HonoursStartCell()
+    {
+        RunSta(() =>
+        {
+            var t = BlackLabelOnAvery();
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var bmp = PrintService.RenderSheetPreview(t,
+                new (Core.Models.LabelTemplate, Dictionary<string, string>)[] { (t, fields) },
+                startCell: 4, dpi: 96);
+
+            var p = t.Page!;
+            var c0 = p.CellOriginMm(0, 66.7, 25.4);
+            var c4 = p.CellOriginMm(4, 66.7, 25.4);   // row 2, middle column (across-first)
+            Assert.False(IsDarkAtMm(bmp, c0.XMm + 33, c0.YMm + 12), "cell 0 must stay empty (part-used sheet)");
+            Assert.True(IsDarkAtMm(bmp, c4.XMm + 33, c4.YMm + 12), "the label must land at cell 5");
+        });
     }
 }
 

@@ -21,12 +21,8 @@ public partial class PrintPreviewWindow : Window
         _attachedVm = DataContext as PrintPreviewViewModel;
         if (_attachedVm == null) return;
 
-        // The VM renders the preview bitmap (Source is bound) — it owns which label is shown so the
-        // operator can step through the actual job. Display at the label's 96-DPI WPF pixel size;
-        // Stretch.Fill maps the high-res bitmap into that space without layout inflation.
-        PreviewImage.Width  = _attachedVm.Template.WidthPx;
-        PreviewImage.Height = _attachedVm.Template.HeightPx;
-
+        // The VM renders the preview bitmap and owns the display size (label vs composed sheet) —
+        // Source/Width/Height are all bound; Stretch.Fill maps the high-res bitmap into that space.
         _attachedVm.CloseRequested += OnCloseRequested;
     }
 

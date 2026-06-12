@@ -1,0 +1,82 @@
+<Window x:Class="LabelDesigner.Views.PageSetupDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Page Setup (sheet printing)"
+        Width="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+    <StackPanel Margin="14">
+        <TextBlock TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,0,0,10"
+                   Text="Print this label N-up on a larger page (Avery sheets, cards, menus) through a sheet printer. Leave OFF for thermal/Kiaro label media — they print directly on the label stock."/>
+
+        <CheckBox x:Name="EnabledBox" Content="Print on a larger page (sheet mode)" FontWeight="SemiBold"
+                  Checked="EnabledBox_Changed" Unchecked="EnabledBox_Changed" Margin="0,0,0,8"/>
+
+        <StackPanel x:Name="LayoutPanel" Margin="20,0,0,0">
+
+            <TextBlock Text="Page size (mm)" FontSize="11" Foreground="#555" Margin="0,0,0,2"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBox x:Name="PageWBox" Width="64" Padding="3,2"/>
+                <TextBlock Text="×" Margin="6,2" VerticalAlignment="Center"/>
+                <TextBox x:Name="PageHBox" Width="64" Padding="3,2"/>
+                <Button Content="Letter" Margin="10,0,4,0" Padding="8,2" Click="PagePreset_Click" Tag="215.9,279.4"/>
+                <Button Content="A4" Padding="8,2" Click="PagePreset_Click" Tag="210,297"/>
+            </StackPanel>
+
+            <TextBlock Text="Grid" FontSize="11" Foreground="#555" Margin="0,4,0,2"/>
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="70"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Columns" Grid.Row="0" Grid.Column="0" Margin="0,4,8,0"/>
+                <TextBox x:Name="ColsBox" Grid.Row="0" Grid.Column="1" Padding="3,2" Margin="0,2"/>
+                <TextBlock Text="Rows" Grid.Row="0" Grid.Column="2" Margin="14,4,8,0"/>
+                <TextBox x:Name="RowsBox" Grid.Row="0" Grid.Column="3" Padding="3,2" Margin="0,2"/>
+
+                <TextBlock Text="Margin left" Grid.Row="1" Grid.Column="0" Margin="0,4,8,0"/>
+                <TextBox x:Name="MarginLBox" Grid.Row="1" Grid.Column="1" Padding="3,2" Margin="0,2"
+                         ToolTip="Top-left of the FIRST label, mm from the page's left edge"/>
+                <TextBlock Text="Margin top" Grid.Row="1" Grid.Column="2" Margin="14,4,8,0"/>
+                <TextBox x:Name="MarginTBox" Grid.Row="1" Grid.Column="3" Padding="3,2" Margin="0,2"/>
+
+                <TextBlock Text="Gutter X" Grid.Row="2" Grid.Column="0" Margin="0,4,8,0"/>
+                <TextBox x:Name="GutterXBox" Grid.Row="2" Grid.Column="1" Padding="3,2" Margin="0,2"
+                         ToolTip="Horizontal space between labels, mm"/>
+                <TextBlock Text="Gutter Y" Grid.Row="2" Grid.Column="2" Margin="14,4,8,0"/>
+                <TextBox x:Name="GutterYBox" Grid.Row="2" Grid.Column="3" Padding="3,2" Margin="0,2"/>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Fill order" Margin="0,2,8,0"/>
+                <ComboBox x:Name="FillBox" Width="150" SelectedIndex="0">
+                    <ComboBoxItem>Across, then down</ComboBoxItem>
+                    <ComboBoxItem>Down, then across</ComboBoxItem>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="Avery 5160 (30-up, 2⅝″×1″)" Padding="8,3" Margin="0,0,6,0" Click="Avery_Click"
+                        ToolTip="3 × 10 grid on Letter. The label itself must be 66.7 × 25.4 mm (Template ▸ Resize Canvas)."/>
+                <Button Content="Centre 1 label on page" Padding="8,3" Click="Center_Click"
+                        ToolTip="1 × 1 grid with margins that centre the label (cards, proofs)"/>
+            </StackPanel>
+
+            <TextBlock x:Name="FitInfo" FontSize="11" Foreground="#777" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+            <TextBlock Text="Back-side template (duplex)" FontSize="11" Foreground="#555" Margin="0,0,0,2"/>
+            <ComboBox x:Name="BackBox" IsEditable="True"
+                      ToolTip="Printed as the BACK of each sheet (mirrored so a long-edge flip lines up). Blank = single-sided. Validate duplex on your printer before production."/>
+            <TextBlock FontSize="10" Foreground="#999" FontStyle="Italic" TextWrapping="Wrap" Margin="0,2,0,0"
+                       Text="The back template must be the same label size. If the driver doesn't duplex, fronts and backs come out as alternating sheets."/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
+            <Button Content="OK" Width="80" IsDefault="True" Click="Ok_Click"
+                    Background="#2196F3" Foreground="White"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

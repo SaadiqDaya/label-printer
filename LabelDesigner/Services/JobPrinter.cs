@@ -98,6 +98,35 @@ public static class JobPrinter
         }
         if (strictErrors.Count > 0) throw new LabelValidationException(strictErrors);
 
+        // SHEET JOBS: when every template in the job has a page layout (Avery sheets, menu cards),
+        // labels must FLOW ACROSS SHEET CELLS in the file's row order — possibly mixing templates
+        // on one page (that's how flavor-card menus work). One printer for the whole job.
+        // PrintRows enforces grid compatibility and throws loudly on a mismatch (config error,
+        // not a row error — skip mode doesn't apply).
+        if (printable.Count > 0 &&
+            printable.All(p => p.Group.Template.Page != null &&
+                               p.Group.Template.PrinterProfile.OutputMode == Core.Models.PrintBackend.Gdi))
+        {
+            var ordered = printable
+                .SelectMany(p => p.Rows.Select(r => (p.Group.Template, Row: r)))
+                .OrderBy(x => x.Row.RowNumber)
+                .ToList();
+            var batch = ordered.Select(x => (x.Template, x.Row.Fields, x.Row.Qty)).ToList();
+            var sheetPrinter = printable
+                .Select(p => p.Group.Template.PrinterProfile.PrinterName)
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? fallbackPrinter;
+
+            int labels = PrintService.PrintRows(batch, sheetPrinter,
+                allowFallbackPrinter: false, source: source, printedBy: printedBy);
+
+            result.RowsPrinted = batch.Count;
+            result.LabelsPrinted = labels;
+            result.GroupSummaries.Add(
+                $"Sheet job → {(string.IsNullOrWhiteSpace(sheetPrinter) ? "(default printer)" : sheetPrinter)}: " +
+                $"{labels} label(s) from {batch.Count} row(s) across {printable.Count} template(s)");
+            return result;
+        }
+
         // Print group by group; each group routes to its template's profile printer when set.
         foreach (var (group, rows) in printable)
         {

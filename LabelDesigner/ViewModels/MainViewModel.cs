@@ -59,6 +59,30 @@ public class MainViewModel : ViewModelBase
         dlg.ShowDialog();
     }
 
+    public ICommand PageSetupCommand => new RelayCommand(PageSetup);
+
+    private void PageSetup()
+    {
+        var t = Designer.Template;
+        var dlg = new Views.PageSetupDialog(t.Page, t.WidthMm, t.HeightMm)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        t.Page = dlg.Result;
+        Designer.IsDirty = true;
+        StatusMessage = t.Page == null
+            ? "Sheet mode OFF — prints directly on label media."
+            : $"Sheet mode: {t.Page.Columns} × {t.Page.Rows} = {t.Page.CellsPerPage} per page" +
+              (string.IsNullOrWhiteSpace(t.Page.BackTemplateName) ? "." : $", duplex back '{t.Page.BackTemplateName}'.");
+        if (Designer.CurrentFilePath != null)
+        {
+            _templateService.Save(Designer.ToModel(), Designer.CurrentFilePath);
+            StatusMessage += " (Saved)";
+        }
+    }
+
     public ICommand OpenTemplateRoutingCommand => new RelayCommand(OpenTemplateRouting);
 
     private void OpenTemplateRouting()

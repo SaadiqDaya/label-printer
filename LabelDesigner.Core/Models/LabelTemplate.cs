@@ -43,6 +43,12 @@ public class LabelTemplate : IJsonOnDeserialized
     public PrinterProfile PrinterProfile { get; set; } = new();
 
     /// <summary>
+    /// Optional sheet layout: print N-up on a larger page (Avery sheets, cards, menus) instead of
+    /// directly on label-sized media. Null (default) = direct printing, unchanged. GDI only.
+    /// </summary>
+    public PageLayout? Page { get; set; }
+
+    /// <summary>
     /// Declared field names this template uses (e.g. "itemName", "price").
     /// Elements reference these via BoundField or {{fieldName}} tokens.
     /// </summary>

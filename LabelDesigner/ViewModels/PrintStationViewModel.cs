@@ -655,14 +655,12 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            int total = 0;
-            foreach (var (row, item) in valid)
-            {
-                PrintService.Print(_template!, row.Fields, Printer(), copies: item.Qty,
-                    allowFallbackPrinter: false, validate: false, source: "PrintStation",
-                    printedBy: GetOperatorName());
-                total += item.Qty;
-            }
+            // PrintRows flows sheet templates across page cells (Avery etc.); for ordinary
+            // label-media templates it behaves exactly like per-row Print calls.
+            int total = PrintService.PrintRows(
+                valid.Select(p => (_template!, p.Row.Fields, p.Item.Qty)).ToList(),
+                Printer(), allowFallbackPrinter: false, source: "PrintStation",
+                printedBy: GetOperatorName());
 
             Status = $"Printed {total} label(s) from records {lo}–{hi}" +
                      (invalid.Count > 0 ? $" — {invalid.Count} invalid row(s) skipped." : ".");

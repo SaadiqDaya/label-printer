@@ -80,6 +80,8 @@
             <MenuItem Header="_Template">
                 <MenuItem Header="_Manage Fields / Excel Mapping…" Command="{Binding ManageFieldsCommand}" InputGestureText="Ctrl+M" />
                 <MenuItem Header="_Resize Canvas…"                 Command="{Binding ResizeCanvasCommand}" />
+                <MenuItem Header="_Page Setup (sheet printing)…"   Command="{Binding PageSetupCommand}"
+                          ToolTip="Print N-up on a larger page: Avery sheet labels, cards, menus, duplex backs"/>
                 <Separator/>
                 <MenuItem Header="Template Rou_ting (data → template)…" Command="{Binding OpenTemplateRoutingCommand}"
                           ToolTip="Rules that pick which template a batch row prints with (used by watch-folder jobs)"/>

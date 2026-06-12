@@ -278,6 +278,9 @@ add_numbered('**Open:** File > Open, or pick from the template list / Recent Tem
 add_numbered('**Save:** File > Save (atomic write — a crash mid-save cannot corrupt the file).')
 add_numbered('**Label Setup:** Template > Resize Canvas — size, DPI (203/300), output backend, darkness/speed (Section 15).')
 add_numbered('**Export:** File > Export — the label (with the same data the preview shows) as **PNG** at template DPI, a **PDF** at the exact label size, or **ZPL** text (Section 16).')
+add_heading('5.1  Page Setup — Sheet Printing (Avery labels, cards, menus)', 2)
+add_para('By default a template prints directly on label-sized media (the Zebra/Kiaro model). **Template > Page Setup (sheet printing)…** arranges labels N-up on a larger page (Letter/A4/custom) for a sheet printer instead: set the grid (columns × rows, margins, gutters), or use the **Avery 5160 preset** (30 labels 66.7 × 25.4 mm per Letter sheet, 3 × 10 — the bin/address-label stock; the label template must be 66.7 × 25.4 mm), or **Centre 1 label on page** for cards. An optional **back-side template** prints as the duplex BACK of each sheet (mirrored for a long-edge flip — validate duplex on the physical printer first).')
+add_para('Batch printing then FLOWS records across the sheet cells — 30 cooksheet rows = one full Avery sheet. Rows routed to DIFFERENT templates fill cells in row order (flavor-card menus), provided all templates share one label size and grid. Print Preview shows the composed sheets, and **Start at label #** begins partway down a part-used sheet. ZPL output ignores page layouts.')
 page_break()
 
 # 6 ELEMENTS
@@ -366,6 +369,7 @@ add_screenshot('print-preview.png', 'The Print Preview window.')
 add_numbered('File > Print (Ctrl+P) opens Print Preview.')
 add_numbered('Choose the **printer** (a Zebra is preferred automatically) and **quantity**, or tick **Print all records**.')
 add_numbered('Review the preview (exactly what prints) and click **Print**. In Print-all-records mode a JOB LIST appears on the left — every record that will print with its thumbnail and quantity (×N); click one to preview it or step with the ◄ ► arrows. PrintQty-0 rows are excluded — they won\'t print.')
+add_numbered('SHEET templates (Section 5.1): the big preview shows the COMPOSED SHEETS and the arrows page through them; "Start at label #" begins partway down a part-used sheet.')
 add_heading('12.1  What\'s Checked Before Printing', 2)
 add_bullet('Every barcode that will print is validated; an un-encodable one **blocks the job** and names the field.')
 add_bullet('Required fields and field rules are enforced.')

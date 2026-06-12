@@ -129,7 +129,21 @@ Select two or more elements, then use **Arrange**:
 ### 5.4 Label Setup (size, DPI, printer profile)
 **Template ▸ Resize Canvas** opens **Label Setup**, where you set the label size, **printer resolution (DPI)** (203 or 300 for the ZD621), the **output backend** (GDI or ZPL), and optional **darkness / speed / ZPL host**. See Section 15.
 
-### 5.5 Exporting a Label (PNG / PDF / ZPL)
+### 5.5 Page Setup — Sheet Printing (Avery labels, cards, menus)
+By default a template prints **directly on label-sized media** (the Zebra/Kiaro model). **Template ▸ Page Setup (sheet printing)…** switches a template to **sheet mode** instead: labels are arranged N-up on a larger page (Letter/A4/custom) and printed through a sheet printer such as the colour laser.
+
+- **Page size** — Letter / A4 presets or custom mm.
+- **Grid** — columns × rows, the first label's left/top margin, and X/Y gutters between labels. The dialog shows whether the grid fits the page.
+- **Avery 5160 preset** — 30 labels (2⅝″ × 1″ = 66.7 × 25.4 mm) per Letter sheet, 3 × 10. The label template itself must be 66.7 × 25.4 mm (the dialog warns if not). This is the bin/address-label stock.
+- **Centre 1 label on page** — for cards and proofs: a 1 × 1 grid with margins computed to centre the label.
+- **Fill order** — across-then-down (default) or down-then-across.
+- **Back-side template (duplex)** — optional: another template printed as the **back** of each sheet (e.g. flavor-card backs). Back cells are mirrored left↔right so a long-edge flip lines them up. ⚠ Validate duplex on the physical printer before production; if the driver doesn't duplex, fronts and backs come out as alternating sheets.
+
+**How printing changes:** in batch printing (Print Preview "all records", Print Station, watch-folder jobs) the records **flow across the sheet's cells** — 30 cooksheet rows = one full Avery sheet. A job whose rows route to **different templates** (e.g. one template per flavor) fills the cells in row order — that's how flavor-card **menus** work — provided every template shares the same label size and page grid. The Print Preview shows the **composed sheets** page by page, and **Start at label #** lets you begin partway down a part-used sheet.
+
+ZPL output ignores page layouts (a Zebra **is** label media).
+
+### 5.6 Exporting a Label (PNG / PDF / ZPL)
 **File ▸ Export** renders the label with the **same data the canvas preview shows** (the loaded data row, or the template's test data):
 - **PNG** — an image at the template's DPI (e.g. for a spec sheet or a customer proof).
 - **PDF** — a one-page PDF at the exact label size in mm, pixel-identical to the print preview.
@@ -304,6 +318,7 @@ See Section 14 for serial behaviour (continuous vs reset), increment, prefix/suf
 - Choose the **printer** (a Zebra is preferred automatically).
 - Set **quantity**, or use **Print all records** to print every loaded row honouring each row's PrintQty.
 - The preview renders exactly what will print. In **Print all records** mode a **job list** appears on the left — every record that will print, with its thumbnail and quantity (×N). Click a row to preview it, or step with the **◄ ►** arrows. Rows with PrintQty 0 are excluded, because they won't print.
+- **Sheet templates** (Section 5.5): the big preview shows the **composed sheets** and the arrows page through them; **Start at label #** begins printing partway down a part-used sheet.
 - Click **Print**.
 
 ### 12.2 What's Checked Before Printing

@@ -126,12 +126,73 @@ public class PrintPreviewViewModel : ViewModelBase
         {
             if (!_printAllRecords || _allRows == null) return "This record";
             if (_jobRows.Count == 0) return "Nothing to print — every row has quantity 0";
+            if (SheetPreviewActive)
+                return $"Sheet {_previewIndex + 1} of {SheetCount}";
             return $"Record {_previewIndex + 1} of {_jobRows.Count} in this job  (×{_jobRows[_previewIndex].PrintQty})";
         }
     }
 
+    // ─── Sheet mode (template has a PageLayout) ──────────────────────────────
+    public bool IsSheetTemplate => _template.Page != null;
+
+    private int _startLabelNumber = 1;
+    /// <summary>1-based cell where printing starts on the FIRST sheet — lets a part-used Avery
+    /// sheet's remaining labels be used instead of wasted.</summary>
+    public int StartLabelNumber
+    {
+        get => _startLabelNumber;
+        set
+        {
+            var max = _template.Page?.CellsPerPage ?? 1;
+            if (Set(ref _startLabelNumber, Math.Clamp(value, 1, max)))
+            {
+                _previewIndex = 0;
+                RefreshPreview();
+            }
+        }
+    }
+
+    public string SheetInfo =>
+        _template.Page is { } p
+            ? $"Sheet: {p.Columns} × {p.Rows} = {p.CellsPerPage} per page ({p.PageWidthMm:0.#} × {p.PageHeightMm:0.#} mm)" +
+              (string.IsNullOrWhiteSpace(p.BackTemplateName) ? "" : $" + back '{p.BackTemplateName}'")
+            : "";
+
+    /// <summary>True when the big preview is paging through composed SHEETS (not single labels).</summary>
+    private bool SheetPreviewActive => IsSheetTemplate && _printAllRecords && _jobRows.Count > 0;
+
+    /// <summary>Every label of the job in print order (each row repeated by its quantity).</summary>
+    private List<Dictionary<string, string>> ExpandedCells()
+    {
+        var cells = new List<Dictionary<string, string>>();
+        foreach (var r in _jobRows)
+            for (int i = 0; i < r.PrintQty; i++) cells.Add(r.Fields);
+        return cells;
+    }
+
+    private int SheetCount
+    {
+        get
+        {
+            if (_template.Page is not { } p) return 0;
+            int total = _jobRows.Sum(r => r.PrintQty);
+            if (total == 0) return 0;
+            int firstCap = p.CellsPerPage - (_startLabelNumber - 1);
+            if (total <= firstCap) return 1;
+            return 1 + (int)Math.Ceiling((total - firstCap) / (double)p.CellsPerPage);
+        }
+    }
+
+    /// <summary>The width/height the preview Image displays at (96-DPI px): the PAGE for sheet
+    /// previews, the label otherwise.</summary>
+    public double PreviewDisplayWidth =>
+        SheetPreviewActive ? LabelTemplate.MmToPixels(_template.Page!.PageWidthMm) : _template.WidthPx;
+    public double PreviewDisplayHeight =>
+        SheetPreviewActive ? LabelTemplate.MmToPixels(_template.Page!.PageHeightMm) : _template.HeightPx;
+
     /// <summary>True when the preview can step through multiple job records.</summary>
-    public bool CanNavigatePreview => _printAllRecords && _jobRows.Count > 1;
+    public bool CanNavigatePreview =>
+        _printAllRecords && (SheetPreviewActive ? SheetCount > 1 : _jobRows.Count > 1);
 
     /// <summary>The job list shown left of the preview — one entry per record that will print,
     /// with a thumbnail and its quantity. Clicking an entry shows it in the big preview.</summary>
@@ -148,7 +209,8 @@ public class PrintPreviewViewModel : ViewModelBase
         set
         {
             if (!Set(ref _selectedJobItem, value) || _syncingSelection || value == null) return;
-            _previewIndex = value.Index;
+            // In sheet mode jump to the SHEET this record lands on; otherwise show the record.
+            _previewIndex = SheetPreviewActive ? SheetIndexOfRecord(value.Index) : value.Index;
             RefreshPreview();
         }
     }
@@ -171,22 +233,33 @@ public class PrintPreviewViewModel : ViewModelBase
         dispatcher.BeginInvoke(Step, System.Windows.Threading.DispatcherPriority.Background);
     }
 
+    /// <summary>How many steps the ◄ ► arrows page through: sheets in sheet mode, records otherwise.</summary>
+    private int NavCount => SheetPreviewActive ? SheetCount : _jobRows.Count;
+
     public ICommand PrevLabelCommand => new RelayCommand(
         () => { _previewIndex--; RefreshPreview(); },
         () => CanNavigatePreview && _previewIndex > 0);
 
     public ICommand NextLabelCommand => new RelayCommand(
         () => { _previewIndex++; RefreshPreview(); },
-        () => CanNavigatePreview && _previewIndex < _jobRows.Count - 1);
+        () => CanNavigatePreview && _previewIndex < NavCount - 1);
 
     private void RefreshPreview()
     {
         try
         {
-            var fields = _printAllRecords && _jobRows.Count > 0
-                ? _jobRows[_previewIndex].Fields
-                : Fields;
-            PreviewImage = PrintService.RenderPreview(_template, fields, PreviewDpi);
+            if (SheetPreviewActive)
+            {
+                _previewIndex = Math.Clamp(_previewIndex, 0, Math.Max(0, SheetCount - 1));
+                PreviewImage = RenderSheet(_previewIndex);
+            }
+            else
+            {
+                var fields = _printAllRecords && _jobRows.Count > 0
+                    ? _jobRows[Math.Clamp(_previewIndex, 0, _jobRows.Count - 1)].Fields
+                    : Fields;
+                PreviewImage = PrintService.RenderPreview(_template, fields, PreviewDpi);
+            }
         }
         catch (Exception ex)
         {
@@ -195,18 +268,56 @@ public class PrintPreviewViewModel : ViewModelBase
         }
 
         // Keep the job list's highlight in step with the big preview (arrows or list clicks alike).
-        _syncingSelection = true;
-        try
+        // In sheet mode many records share one sheet, so the arrows don't move the list highlight.
+        if (!SheetPreviewActive)
         {
-            _selectedJobItem = _printAllRecords && _previewIndex < JobItems.Count ? JobItems[_previewIndex] : null;
-            OnPropertyChanged(nameof(SelectedJobItem));
+            _syncingSelection = true;
+            try
+            {
+                _selectedJobItem = _printAllRecords && _previewIndex < JobItems.Count ? JobItems[_previewIndex] : null;
+                OnPropertyChanged(nameof(SelectedJobItem));
+            }
+            finally { _syncingSelection = false; }
         }
-        finally { _syncingSelection = false; }
 
         OnPropertyChanged(nameof(PreviewInfo));
         OnPropertyChanged(nameof(CanNavigatePreview));
         OnPropertyChanged(nameof(ShowJobList));
+        OnPropertyChanged(nameof(PreviewDisplayWidth));
+        OnPropertyChanged(nameof(PreviewDisplayHeight));
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>Renders composed sheet number <paramref name="sheetIndex"/> (0-based) of the job.</summary>
+    private BitmapSource RenderSheet(int sheetIndex)
+    {
+        var p = _template.Page!;
+        var cells = ExpandedCells();
+        int firstCap = p.CellsPerPage - (_startLabelNumber - 1);
+
+        int skip, take, startCell;
+        if (sheetIndex == 0) { skip = 0; take = Math.Min(firstCap, cells.Count); startCell = _startLabelNumber - 1; }
+        else
+        {
+            skip = firstCap + (sheetIndex - 1) * p.CellsPerPage;
+            take = Math.Min(p.CellsPerPage, Math.Max(0, cells.Count - skip));
+            startCell = 0;
+        }
+
+        var pageLabels = cells.Skip(skip).Take(take)
+            .Select(f => (_template, f))
+            .ToList();
+        // 130 dpi keeps a Letter sheet around 1100×1430 px — sharp enough on screen, fast to render.
+        return PrintService.RenderSheetPreview(_template, pageLabels, startCell, dpi: 130);
+    }
+
+    /// <summary>The sheet a record's FIRST label lands on (for list-click navigation).</summary>
+    private int SheetIndexOfRecord(int recordIndex)
+    {
+        var p = _template.Page!;
+        int position = 0;
+        for (int i = 0; i < recordIndex && i < _jobRows.Count; i++) position += _jobRows[i].PrintQty;
+        return (position + (_startLabelNumber - 1)) / p.CellsPerPage;
     }
 
     /// <summary>Label shown on the big print button — switches between "Print ×N" and "Print N records".</summary>
@@ -306,13 +417,17 @@ public class PrintPreviewViewModel : ViewModelBase
                 var batchErrors = PrintService.ValidateBatch(_template, rows.Select(r => r.Fields).ToList());
                 if (batchErrors.Count > 0) throw new LabelValidationException(batchErrors);
 
-                foreach (var row in rows)
-                    PrintService.Print(_template, row.Fields, printer, copies: row.PrintQty,
-                        allowFallbackPrinter: false, validate: false);
+                // PrintRows flows sheet templates across page cells (honouring the start label);
+                // for label-media templates it behaves exactly like per-row Print calls.
+                PrintService.PrintRows(
+                    rows.Select(r => (_template, r.Fields, r.PrintQty)).ToList(),
+                    printer, allowFallbackPrinter: false,
+                    startCell: StartLabelNumber - 1);
             }
             else
             {
-                PrintService.Print(_template, Fields, printer, EffectiveQty, allowFallbackPrinter: false);
+                PrintService.Print(_template, Fields, printer, EffectiveQty, allowFallbackPrinter: false,
+                    startCell: StartLabelNumber - 1);
             }
         }
         catch (LabelValidationException ex)

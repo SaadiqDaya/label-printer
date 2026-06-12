@@ -18,7 +18,7 @@ public static class PrintService
     public static void Print(LabelTemplate template, Dictionary<string, string> fields,
         string? printerName = null, int copies = 1,
         bool allowFallbackPrinter = true, bool validate = true, string source = "Manual",
-        string? printedBy = null)
+        string? printedBy = null, int startCell = 0)
     {
         if (copies <= 0) return;   // qty = 0 means "don't print" — never default to 1
 
@@ -34,11 +34,83 @@ public static class PrintService
             }
         }
 
+        PrintRows(new[] { (template, fields, copies) }, printerName, allowFallbackPrinter, source, printedBy, startCell);
+    }
+
+    /// <summary>
+    /// The BATCH print API: many rows (possibly with DIFFERENT templates) in one job. Callers
+    /// validate rows themselves. For ordinary label-media templates this prints each row's copies
+    /// exactly like repeated <see cref="Print"/> calls (one history entry per row, serials reserved
+    /// per row). When the first template has a <see cref="PageLayout"/> (and everything is GDI),
+    /// labels FLOW ACROSS SHEET CELLS instead — Avery sheets, menus of mixed flavor-card templates,
+    /// duplex backs — starting at <paramref name="startCell"/> on the first sheet (a part-used
+    /// sheet's remaining labels). Mixed-template sheets must share the same grid and label size.
+    /// </summary>
+    public static int PrintRows(
+        IReadOnlyList<(LabelTemplate Template, Dictionary<string, string> Fields, int Copies)> rows,
+        string? printerName = null, bool allowFallbackPrinter = false, string source = "Manual",
+        string? printedBy = null, int startCell = 0)
+    {
+        var live = rows.Where(r => r.Copies > 0).ToList();
+        if (live.Count == 0) return 0;
+        var first = live[0].Template;
+
+        bool sheetMode = first.Page != null &&
+                         live.All(r => r.Template.PrinterProfile.OutputMode == PrintBackend.Gdi);
+        if (sheetMode)
+        {
+            var problems = SheetCompatibilityErrors(live, first);
+            if (problems.Count > 0) throw new LabelValidationException(problems);
+        }
+
         // Resolve + verify the printer BEFORE reserving serials, so an offline/missing printer never
         // burns a serial range or reports a phantom "printed".
-        var queue = GetPrintQueue(printerName ?? template.PrinterProfile.PrinterName, allowFallbackPrinter);
+        var queue = GetPrintQueue(printerName ?? first.PrinterProfile.PrinterName, allowFallbackPrinter);
         CheckPrinterReady(queue);
 
+        int total = 0;
+        if (!sheetMode)
+        {
+            foreach (var (t, f, c) in live)
+                total += PrintRowResolved(queue, t, f, c, source, printedBy);
+            return total;
+        }
+
+        var dialog = MakeDialog(queue, first);
+        var emitter = new SheetEmitter(dialog, first, Math.Max(0, startCell));
+        try
+        {
+            foreach (var (t, f, c) in live)
+                total += PrintRowResolved(queue, t, f, c, source, printedBy, emitter);
+        }
+        finally { emitter.Complete(); }
+        LogService.Info($"Sheet job: {total} label(s) on {emitter.PagesPrinted} page(s) of '{first.Name}' layout to '{queue.Name}' [{source}].");
+        return total;
+    }
+
+    /// <summary>Mixed-template sheets only work when every cell lines up — same grid, same label size.</summary>
+    private static List<string> SheetCompatibilityErrors(
+        IReadOnlyList<(LabelTemplate Template, Dictionary<string, string> Fields, int Copies)> rows, LabelTemplate first)
+    {
+        var errors = new List<string>();
+        foreach (var t in rows.Select(r => r.Template).DistinctBy(t => t.Id))
+        {
+            if (t.Page == null)
+                errors.Add($"Template '{t.Name}' has no page layout but is in a sheet job — set the same Page Setup on every template.");
+            else if (!t.Page.SameGridAs(first.Page))
+                errors.Add($"Template '{t.Name}' has a DIFFERENT page grid than '{first.Name}' — sheet cells wouldn't line up.");
+            if (t.WidthMm != first.WidthMm || t.HeightMm != first.HeightMm)
+                errors.Add($"Template '{t.Name}' is {t.WidthMm}×{t.HeightMm} mm but '{first.Name}' is {first.WidthMm}×{first.HeightMm} mm — mixed sheets need one label size.");
+        }
+        return errors;
+    }
+
+    /// <summary>Reserve serials → resolve per-label fields → render. One history entry per row,
+    /// exactly like a single Print() call, regardless of how labels land on sheets.</summary>
+    private static int PrintRowResolved(PrintQueue queue, LabelTemplate template,
+        Dictionary<string, string> fields, int copies, string source, string? printedBy,
+        SheetEmitter? emitter = null)
+    {
         // Reserve the serial range up front (crash-safe): if the batch dies partway, the counter has
         // already advanced, so a retry gets a fresh range — a GAP, never a duplicate.
         var reserved   = SerialCounterStore.Reserve(template, copies);
@@ -54,7 +126,7 @@ public static class PrintService
             perLabel.Add(f);
         }
 
-        PrintResolved(queue, template, perLabel, source, fields, constants, serialPlan, printedBy);
+        return PrintResolved(queue, template, perLabel, source, fields, constants, serialPlan, printedBy, emitter);
     }
 
     /// <summary>
@@ -116,19 +188,20 @@ public static class PrintService
     private static int PrintResolved(PrintQueue queue, LabelTemplate template,
         IReadOnlyList<Dictionary<string, string>> perLabel, string source,
         Dictionary<string, string> historyFields, Dictionary<string, string> resolvedConstants,
-        List<SerialPlanItem> serialPlan, string? printedBy = null)
+        List<SerialPlanItem> serialPlan, string? printedBy = null,
+        SheetEmitter? emitter = null, int startCell = 0)
     {
         if (perLabel.Count == 0) return 0;
         printedBy ??= Environment.UserName;
 
         // Native ZPL backend (opt-in): emit ZPL II and send raw, bypassing GDI entirely.
+        // Sheet layouts are GDI-only — a ZPL printer IS label media.
         if (template.PrinterProfile.OutputMode == PrintBackend.Zpl)
+        {
+            if (template.Page != null)
+                LogService.Warn($"Template '{template.Name}' has a page layout but uses ZPL output — printing per label, layout ignored.");
             return PrintZpl(queue, template, perLabel, source, historyFields, resolvedConstants, serialPlan, printedBy);
-
-        var ticket = queue.DefaultPrintTicket;
-        ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.Unknown, template.WidthPx, template.HeightPx);
-        try { ticket.PageResolution = new PageResolution(template.Dpi, template.Dpi); }
-        catch (Exception ex) { LogService.Warn($"Driver rejected PageResolution {template.Dpi}: {ex.Message}"); }
+        }
 
         // Registration offset is applied to the visual (BuildPrintVisual). Darkness/speed/media are
         // recorded here; they take effect natively on the ZPL path — on the GDI path they must be set
@@ -140,20 +213,36 @@ public static class PrintService
                 $"speed={(prof.SpeedIps?.ToString() ?? "driver")}ips, media={prof.MediaType}, " +
                 $"offset=({prof.LabelOffsetXMm},{prof.LabelOffsetYMm})mm.");
 
-        var dialog = new PrintDialog { PrintQueue = queue, PrintTicket = ticket };
+        // Single-call printing of a sheet template creates its own emitter; batch callers
+        // (PrintRows) pass a shared one so MANY rows flow onto the same sheets.
+        PrintDialog? dialog = null;
+        bool ownEmitter = false;
+        if (emitter == null)
+        {
+            dialog = MakeDialog(queue, template);
+            if (template.Page != null)
+            {
+                emitter = new SheetEmitter(dialog, template, Math.Max(0, startCell));
+                ownEmitter = true;
+            }
+        }
+
         int printed = 0;
         try
         {
             foreach (var fields in perLabel)
             {
-                var visual = BuildPrintVisual(template, fields);
-                dialog.PrintVisual(visual, template.Name);
+                if (emitter != null) emitter.Emit(template, fields);
+                else dialog!.PrintVisual(BuildPrintVisual(template, fields), template.Name);
                 printed++;
             }
+            if (ownEmitter) emitter!.Complete();
         }
         finally
         {
             // Record what ACTUALLY printed, with the snapshot needed for a faithful reprint.
+            // (Sheet mode counts EMITTED labels — a failure flushing the final page can overcount
+            // by up to one sheet; the operator sees the printer error and can reprint.)
             PrintHistoryService.Record(new PrintHistoryEntry
             {
                 TimestampIso      = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -171,6 +260,169 @@ public static class PrintService
         }
         LogService.Info($"Printed {printed}/{perLabel.Count} '{template.Name}' to '{queue.Name}' @ {template.Dpi} dpi [{source}] by {printedBy}.");
         return printed;
+    }
+
+    /// <summary>Builds the PrintDialog with the right media size: the PAGE for sheet templates
+    /// (plus driver duplex when a back template is set), the label itself otherwise.</summary>
+    private static PrintDialog MakeDialog(PrintQueue queue, LabelTemplate template)
+    {
+        var ticket = queue.DefaultPrintTicket;
+        if (template.Page is { } page)
+        {
+            ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.Unknown,
+                LabelTemplate.MmToPixels(page.PageWidthMm), LabelTemplate.MmToPixels(page.PageHeightMm));
+            if (!string.IsNullOrWhiteSpace(page.BackTemplateName))
+            {
+                try { ticket.Duplexing = Duplexing.TwoSidedLongEdge; }
+                catch (Exception ex) { LogService.Warn($"Driver rejected duplexing: {ex.Message} — fronts and backs print as separate sheets."); }
+            }
+        }
+        else
+        {
+            ticket.PageMediaSize = new PageMediaSize(PageMediaSizeName.Unknown, template.WidthPx, template.HeightPx);
+            try { ticket.PageResolution = new PageResolution(template.Dpi, template.Dpi); }
+            catch (Exception ex) { LogService.Warn($"Driver rejected PageResolution {template.Dpi}: {ex.Message}"); }
+        }
+        return new PrintDialog { PrintQueue = queue, PrintTicket = ticket };
+    }
+
+    /// <summary>
+    /// Composes label visuals onto sheet pages (front + optional duplex back) and prints each page
+    /// when it fills. Cells advance in the layout's fill order; back cells are mirrored left↔right
+    /// so a long-edge flip aligns them with their fronts. The grid comes from the FIRST template of
+    /// the job; each emitted label may be a different (grid-compatible) template — that's how mixed
+    /// flavor-card menus work.
+    /// </summary>
+    private sealed class SheetEmitter
+    {
+        private readonly PrintDialog _dialog;
+        private readonly LabelTemplate _sheetDef;
+        private readonly PageLayout _page;
+        private readonly Dictionary<string, LabelTemplate> _backCache = new(StringComparer.OrdinalIgnoreCase);
+        private Canvas? _front, _back;
+        private int _cell;
+
+        public int PagesPrinted { get; private set; }
+
+        public SheetEmitter(PrintDialog dialog, LabelTemplate sheetDef, int startCell)
+        {
+            _dialog   = dialog;
+            _sheetDef = sheetDef;
+            _page     = sheetDef.Page!;
+            _cell     = Math.Clamp(startCell, 0, _page.CellsPerPage - 1);
+        }
+
+        public void Emit(LabelTemplate template, Dictionary<string, string> fields)
+        {
+            _front ??= NewPage();
+            Place(_front, BuildPrintVisual(template, fields), template, _cell, mirror: false);
+
+            var back = BackTemplateFor(template);
+            if (back != null)
+            {
+                _back ??= NewPage();
+                Place(_back, BuildPrintVisual(back, fields), back, _cell, mirror: true);
+            }
+
+            if (++_cell >= _page.CellsPerPage) Flush();
+        }
+
+        public void Complete() => Flush();
+
+        private void Flush()
+        {
+            if (_front == null) return;
+            PrintPage(_front);
+            if (_back != null) PrintPage(_back);
+            _front = _back = null;
+            _cell = 0;
+        }
+
+        private Canvas NewPage() => new()
+        {
+            Width      = LabelTemplate.MmToPixels(_page.PageWidthMm),
+            Height     = LabelTemplate.MmToPixels(_page.PageHeightMm),
+            Background = Brushes.White
+        };
+
+        private void Place(Canvas pageCanvas, UIElement label, LabelTemplate t, int cell, bool mirror)
+        {
+            var (x, y) = _page.CellOriginMm(cell, t.WidthMm, t.HeightMm, mirror);
+            Canvas.SetLeft(label, LabelTemplate.MmToPixels(x));
+            Canvas.SetTop(label, LabelTemplate.MmToPixels(y));
+            pageCanvas.Children.Add(label);
+        }
+
+        private void PrintPage(Canvas page)
+        {
+            page.Measure(new Size(page.Width, page.Height));
+            page.Arrange(new Rect(0, 0, page.Width, page.Height));
+            page.UpdateLayout();
+            _dialog.PrintVisual(page, _sheetDef.Name);
+            PagesPrinted++;
+        }
+
+        /// <summary>The duplex back for a template, loaded by name and cached for the job.
+        /// A NAMED back that can't be found fails the job loudly — never a silent one-sided run.</summary>
+        private LabelTemplate? BackTemplateFor(LabelTemplate t)
+        {
+            var name = t.Page?.BackTemplateName;
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            if (_backCache.TryGetValue(name, out var cached)) return cached;
+
+            var found = FindTemplateByName(name);
+            if (found == null)
+                throw new LabelValidationException(new[]
+                    { $"Back-side template \"{name}\" (for '{t.Name}') was not found in the templates folder." });
+            _backCache[name] = found;
+            return found;
+        }
+    }
+
+    /// <summary>Loads a template by Name (or file stem) from the configured templates folder.</summary>
+    private static LabelTemplate? FindTemplateByName(string name)
+    {
+        var svc = new TemplateService(AppConfig.TemplatesDir);
+        foreach (var path in svc.GetTemplatePaths())
+        {
+            var t = svc.Load(path);
+            if (t == null) continue;
+            if (string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetFileNameWithoutExtension(path), name, StringComparison.OrdinalIgnoreCase))
+                return t;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Renders ONE composed sheet for preview: the given (template, fields) labels placed into
+    /// consecutive cells starting at <paramref name="startCell"/>. Callers chunk a job into pages
+    /// (first page holds CellsPerPage − startCell labels, later pages CellsPerPage each).
+    /// </summary>
+    public static BitmapSource RenderSheetPreview(LabelTemplate sheetDef,
+        IReadOnlyList<(LabelTemplate Template, Dictionary<string, string> Fields)> labels,
+        int startCell, double dpi = 96)
+    {
+        var page = sheetDef.Page ?? throw new InvalidOperationException("Template has no page layout.");
+        double w = LabelTemplate.MmToPixels(page.PageWidthMm), h = LabelTemplate.MmToPixels(page.PageHeightMm);
+        var canvas = new Canvas { Width = w, Height = h, Background = Brushes.White };
+
+        int cell = Math.Clamp(startCell, 0, page.CellsPerPage - 1);
+        foreach (var (t, fields) in labels)
+        {
+            if (cell >= page.CellsPerPage) break;
+            var visual = BuildPrintVisual(t, fields);
+            var (x, y) = page.CellOriginMm(cell, t.WidthMm, t.HeightMm);
+            Canvas.SetLeft(visual, LabelTemplate.MmToPixels(x));
+            Canvas.SetTop(visual, LabelTemplate.MmToPixels(y));
+            canvas.Children.Add(visual);
+            cell++;
+        }
+
+        canvas.Measure(new Size(w, h));
+        canvas.Arrange(new Rect(0, 0, w, h));
+        canvas.UpdateLayout();
+        return BitmapHelper.RenderVisual(canvas, w, h, dpi);
     }
 
     /// <summary>ZPL backend: render each label to ZPL II and send raw (TCP 9100 if a NetworkHost is set,
