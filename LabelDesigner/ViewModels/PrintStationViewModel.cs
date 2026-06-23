@@ -193,6 +193,8 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
     // Job-queue state
     private JobViewModel? _selectedJob;
     private JobRowViewModel? _jobPreviewRow;
+    private int _jobSheetIndex;
+    private readonly List<JobRowViewModel> _subscribedJobRows = new();
 
     public ObservableCollection<TemplateListItem> AllTemplates { get; } = new();
     public ObservableCollection<TemplateListItem> Templates { get; } = new();   // filtered view
@@ -258,23 +260,154 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
         {
             if (Set(ref _selectedJob, value))
             {
+                SubscribeJobRows(value);   // live-update the sheet preview as rows are ticked
+                _jobSheetIndex = 0;
                 NotifyJobState();
                 if (value != null)
                 {
-                    // Default the preview to the job's first row.
-                    JobPreviewRow = value.Groups.FirstOrDefault()?.Rows.FirstOrDefault();
-                    Status = $"Job '{value.FileName}' — review rows, then Print job.";
+                    if (JobIsSheet)
+                    {
+                        RefreshJobSheetPreview();   // show the composed sheets, not a single label
+                        Status = $"Job '{value.FileName}' — sheet preview. Review rows, then Print job.";
+                    }
+                    else
+                    {
+                        // Default the preview to the job's first row.
+                        JobPreviewRow = value.Groups.FirstOrDefault()?.Rows.FirstOrDefault();
+                        Status = $"Job '{value.FileName}' — review rows, then Print job.";
+                    }
                 }
                 else RefreshPreview();
             }
         }
     }
 
-    /// <summary>The job row currently being previewed (clicking any row in any group sets it).</summary>
+    /// <summary>The job row currently being previewed (clicking any row in any group sets it).
+    /// For sheet jobs this jumps the sheet preview to the page that row lands on.</summary>
     public JobRowViewModel? JobPreviewRow
     {
         get => _jobPreviewRow;
-        set { if (Set(ref _jobPreviewRow, value) && value != null) RefreshJobPreview(value); }
+        set
+        {
+            if (Set(ref _jobPreviewRow, value) && value != null)
+            {
+                if (JobIsSheet) JumpToRowSheet(value);
+                else RefreshJobPreview(value);
+            }
+        }
+    }
+
+    // ── Sheet-job preview (the selected job's templates have a page layout) ──
+
+    /// <summary>True when the selected job prints on SHEETS (Avery/menus) — the preview then shows
+    /// composed pages with ◄ ► navigation instead of one label at a time.</summary>
+    public bool JobIsSheet =>
+        _selectedJob is { Groups.Count: > 0 } job &&
+        job.Groups[0].Group.Template.Page != null &&
+        job.Groups.All(g => g.Group.Template.PrinterProfile.OutputMode == PrintBackend.Gdi);
+
+    public bool ShowJobSheetNav => JobMode && JobIsSheet;
+
+    public string JobSheetInfo
+    {
+        get
+        {
+            if (!JobIsSheet) return "";
+            int count = JobSheetCount;
+            return count == 0 ? "No rows ticked" : $"Sheet {_jobSheetIndex + 1} of {count}";
+        }
+    }
+
+    public ICommand PrevJobSheetCommand => new RelayCommand(
+        () => { _jobSheetIndex--; RefreshJobSheetPreview(); },
+        () => JobIsSheet && _jobSheetIndex > 0);
+
+    public ICommand NextJobSheetCommand => new RelayCommand(
+        () => { _jobSheetIndex++; RefreshJobSheetPreview(); },
+        () => JobIsSheet && _jobSheetIndex < JobSheetCount - 1);
+
+    /// <summary>The ticked, non-zero job rows in file order, paired with their routed template.</summary>
+    private List<(JobGroupViewModel Group, JobRowViewModel Row)> OrderedIncludedRows() =>
+        _selectedJob == null
+            ? new()
+            : _selectedJob.Groups
+                .SelectMany(g => g.Rows.Select(r => (Group: g, Row: r)))
+                .Where(x => x.Row.Include && x.Row.Qty > 0)
+                .OrderBy(x => x.Row.Row.RowNumber)
+                .ToList();
+
+    /// <summary>Every label that will print, expanded by quantity, in sheet-cell order.</summary>
+    private List<(LabelTemplate Template, Dictionary<string, string> Fields)> IncludedJobCells()
+    {
+        var cells = new List<(LabelTemplate, Dictionary<string, string>)>();
+        foreach (var (g, r) in OrderedIncludedRows())
+            for (int i = 0; i < r.Qty; i++)
+                cells.Add((g.Group.Template, r.Row.Fields));
+        return cells;
+    }
+
+    private int JobSheetCount
+    {
+        get
+        {
+            if (!JobIsSheet) return 0;
+            var page = _selectedJob!.Groups[0].Group.Template.Page!;
+            int total = IncludedJobCells().Count;
+            return total == 0 ? 0 : (int)Math.Ceiling(total / (double)page.CellsPerPage);
+        }
+    }
+
+    private void RefreshJobSheetPreview()
+    {
+        try
+        {
+            if (!JobIsSheet) return;
+            var sheetDef = _selectedJob!.Groups[0].Group.Template;
+            var page = sheetDef.Page!;
+            var cells = IncludedJobCells();
+            if (cells.Count == 0) { Preview = null; }
+            else
+            {
+                int count = (int)Math.Ceiling(cells.Count / (double)page.CellsPerPage);
+                _jobSheetIndex = Math.Clamp(_jobSheetIndex, 0, count - 1);
+                var pageCells = cells.Skip(_jobSheetIndex * page.CellsPerPage).Take(page.CellsPerPage).ToList();
+                Preview = PrintService.RenderSheetPreview(sheetDef, pageCells, startCell: 0, dpi: 130);
+            }
+        }
+        catch (Exception ex) { LogService.Error("Print Station job sheet preview failed.", ex); }
+        OnPropertyChanged(nameof(JobSheetInfo));
+        OnPropertyChanged(nameof(ShowJobSheetNav));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>Pages the sheet preview to the sheet that holds the clicked row's first label.</summary>
+    private void JumpToRowSheet(JobRowViewModel row)
+    {
+        var page = _selectedJob!.Groups[0].Group.Template.Page!;
+        int pos = 0;
+        foreach (var (_, r) in OrderedIncludedRows())
+        {
+            if (r == row) { _jobSheetIndex = pos / page.CellsPerPage; break; }
+            pos += r.Qty;
+        }
+        RefreshJobSheetPreview();
+    }
+
+    private void SubscribeJobRows(JobViewModel? job)
+    {
+        foreach (var r in _subscribedJobRows) r.PropertyChanged -= OnJobRowChanged;
+        _subscribedJobRows.Clear();
+        if (job == null) return;
+        foreach (var g in job.Groups)
+            foreach (var r in g.Rows) { r.PropertyChanged += OnJobRowChanged; _subscribedJobRows.Add(r); }
+    }
+
+    private void OnJobRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (!JobIsSheet) return;
+        // Ticking a row in/out or changing its quantity reshapes the sheets — re-render.
+        if (e.PropertyName is nameof(JobRowViewModel.Include) or nameof(JobRowViewModel.Qty))
+            RefreshJobSheetPreview();
     }
 
     public ICommand PrintCommand        => new RelayCommand(PrintNow, () => _template != null);           // manual mode
@@ -366,6 +499,7 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        SubscribeJobRows(null);   // detach job-row handlers
         _watchService.JobArrived -= OnJobArrived;
         _watchService.Status -= OnWatchStatus;
         Jobs.CollectionChanged -= OnJobsChanged;
@@ -401,6 +535,9 @@ public class PrintStationViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowData));
         OnPropertyChanged(nameof(ShowManual));
         OnPropertyChanged(nameof(ShowTemplateActions));
+        OnPropertyChanged(nameof(JobIsSheet));
+        OnPropertyChanged(nameof(ShowJobSheetNav));
+        OnPropertyChanged(nameof(JobSheetInfo));
         CommandManager.InvalidateRequerySuggested();
     }
 

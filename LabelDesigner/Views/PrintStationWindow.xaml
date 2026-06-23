@@ -76,6 +76,16 @@
             <Border DockPanel.Dock="Bottom" Background="#F3F3F3" Padding="8" Margin="0,8,0,0" CornerRadius="3">
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
             </Border>
+            <!-- Sheet-job page navigation: composed sheets exactly as they'll print (Avery/menus). -->
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0"
+                        Visibility="{Binding ShowJobSheetNav, Converter={StaticResource BoolToVis}}">
+                <Button Content="◄" Width="32" Padding="0" Command="{Binding PrevJobSheetCommand}"
+                        ToolTip="Previous sheet"/>
+                <TextBlock Text="{Binding JobSheetInfo}" VerticalAlignment="Center" Margin="12,0"
+                           MinWidth="120" TextAlignment="Center" FontWeight="SemiBold"/>
+                <Button Content="►" Width="32" Padding="0" Command="{Binding NextJobSheetCommand}"
+                        ToolTip="Next sheet"/>
+            </StackPanel>
             <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1">
                 <Image Source="{Binding Preview}" Stretch="Uniform" Margin="14"
                        RenderOptions.BitmapScalingMode="HighQuality"/>

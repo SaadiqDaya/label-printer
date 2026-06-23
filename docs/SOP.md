@@ -361,6 +361,7 @@ If IT has configured **watch folders** (Section 19.6), batch jobs sent by the ER
 
 1. A new job shows the file name, when it arrived, and how many rows/template groups it contains.
 2. **Click the job** — its rows appear grouped by template (each group also shows which printer it will use). Tick/untick rows and adjust quantities exactly like a data file. Click any row to preview that label.
+   - **Sheet jobs** (templates with a Page Setup — Avery sheets, menus): the preview shows the **composed sheets** exactly as they'll print, with **◄ ►** buttons to page through them. It updates live as you tick rows or change quantities, and clicking a row jumps to the sheet it lands on.
 3. Rows that could not be matched to a template are listed in red at the top — they will not print; the rest of the job still can.
 4. **PRINT JOB** prints every ticked row, group by group. **Reject** moves the file to the `failed` folder without printing. **Close** leaves the job waiting in the queue.
 5. When a job finishes, its file moves to the `printed` folder with a `.result.txt` report (what printed, what was skipped and why). Failures move to `failed` with a `.error.txt` explaining the problem. **Job files are never deleted.**
