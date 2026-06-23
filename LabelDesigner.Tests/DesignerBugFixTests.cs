@@ -336,6 +336,59 @@ public class SheetCompositionTests
     }
 }
 
+public class TableFillsBoxTests
+{
+    private static void RunSta(Action action)
+    {
+        Exception? error = null;
+        var t = new System.Threading.Thread(() => { try { action(); } catch (Exception ex) { error = ex; } });
+        t.SetApartmentState(System.Threading.ApartmentState.STA);
+        t.Start();
+        t.Join();
+        if (error != null) throw error;
+    }
+
+    private static bool IsDarkAt(System.Windows.Media.Imaging.BitmapSource bmp, double fracX, double fracY)
+    {
+        int px = (int)(bmp.PixelWidth * fracX), py = (int)(bmp.PixelHeight * fracY);
+        var pixel = new byte[4];
+        var crop = new System.Windows.Media.Imaging.CroppedBitmap(bmp, new System.Windows.Int32Rect(px, py, 1, 1));
+        var fmt = new System.Windows.Media.Imaging.FormatConvertedBitmap(crop, System.Windows.Media.PixelFormats.Bgra32, null, 0);
+        fmt.CopyPixels(pixel, 4, 0);
+        return pixel[0] < 100 && pixel[1] < 100 && pixel[2] < 100;
+    }
+
+    [Fact]
+    public void Table_ScalesToFillElementBox_NotClippedAtNaturalSize()
+    {
+        RunSta(() =>
+        {
+            // A 1-column table (natural ~60×20 DIU) on an 80×40 mm white label. With the old
+            // clip-at-natural-size behaviour the bottom-right of the box would be blank; with
+            // Viewbox-Fill the black-celled table covers the whole box.
+            var t = new Core.Models.LabelTemplate { Name = "T", WidthMm = 80, HeightMm = 40, BackgroundColor = "#FFFFFF" };
+            t.Elements.Add(new Core.Models.TableElement
+            {
+                X = 0, Y = 0,
+                Width = Core.Models.LabelTemplate.MmToPixels(80),
+                Height = Core.Models.LabelTemplate.MmToPixels(40),
+                ShowHeader = false,
+                CellBackground = "#000000",
+                BorderColor = "#000000",
+                Columns = { },
+                StaticRows = { new System.Collections.Generic.List<string> { "x" } }
+            });
+            // one column
+            ((Core.Models.TableElement)t.Elements[0]).Columns.Add(new Core.Models.TableColumn { Header = "C", Width = 60 });
+
+            var bmp = PrintService.RenderPreview(t, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), dpi: 96);
+
+            Assert.True(IsDarkAt(bmp, 0.5, 0.5),  "table should cover the centre of the box");
+            Assert.True(IsDarkAt(bmp, 0.85, 0.85), "table should reach the bottom-right — it scaled to fill, not clipped");
+        });
+    }
+}
+
 public class TableRowEditingTests
 {
     [Fact]

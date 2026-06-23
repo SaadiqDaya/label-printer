@@ -98,14 +98,16 @@
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                 <Button Content="−" Width="28" FontSize="14" Padding="0"
-                        Command="{Binding ZoomOutCommand}" ToolTip="Zoom out (−)"/>
+                        Click="ZoomOut_Click" ToolTip="Zoom out (−)"/>
                 <TextBlock Text="{Binding PreviewZoomLabel}"
                            Width="44" TextAlignment="Center"
                            VerticalAlignment="Center" FontSize="12" Margin="2,0"/>
                 <Button Content="+" Width="28" FontSize="14" Padding="0"
-                        Command="{Binding ZoomInCommand}" ToolTip="Zoom in (+)"/>
-                <Button Content="1:1" Width="36" Margin="8,0,0,0" Padding="4,2"
-                        Command="{Binding ZoomResetCommand}" ToolTip="Reset to 100%"/>
+                        Click="ZoomIn_Click" ToolTip="Zoom in (+)"/>
+                <Button Content="Fit" Width="40" Margin="8,0,0,0" Padding="4,2"
+                        Click="Fit_Click" ToolTip="Scale the preview to fill this pane"/>
+                <Button Content="1:1" Width="40" Margin="4,0,0,0" Padding="4,2"
+                        Click="Actual_Click" ToolTip="Show at actual size (100%)"/>
             </StackPanel>
 
             <!-- Step through every record that will actually print (all-records mode) -->
@@ -156,7 +158,7 @@
             </Border>
 
             <Border Grid.Column="1" BorderBrush="#CCC" BorderThickness="1" Background="#888">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer x:Name="PreviewScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <Image x:Name="PreviewImage"
                            Margin="12"
                            Stretch="Fill"

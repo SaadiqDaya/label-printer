@@ -176,6 +176,8 @@ Columns (header + bound field + width), row height, header/cell colours, borders
 
 **Editing the data:** **double-click the table on the canvas** to open the spreadsheet-style editor (click a cell and type; **+ Row / − Row / + Col / − Col**; OK applies). New columns get default names — rename them (and set bound field / width) in the Properties panel, where the same rows can also be edited.
 
+**Sizing:** the table **scales to fill the box you draw** — resize the element and the whole table grows or shrinks to match (it prints the same way). Column widths set the *proportions*; the row height and fonts scale with the box.
+
 ---
 
 ## 7. Barcodes
@@ -317,6 +319,7 @@ See Section 14 for serial behaviour (continuous vs reset), increment, prefix/suf
 **File ▸ Print** (Ctrl+P) opens the Print Preview window:
 - Choose the **printer** (a Zebra is preferred automatically).
 - Set **quantity**, or use **Print all records** to print every loaded row honouring each row's PrintQty.
+- Zoom with **−/+**, **Fit** (scale to fill the pane — the preview opens fitted), or **1:1** (actual size).
 - The preview renders exactly what will print. In **Print all records** mode a **job list** appears on the left — every record that will print, with its thumbnail and quantity (×N). Click a row to preview it, or step with the **◄ ►** arrows. Rows with PrintQty 0 are excluded, because they won't print.
 - **Sheet templates** (Section 5.5): the big preview shows the **composed sheets** and the arrows page through them; **Start at label #** begins printing partway down a part-used sheet.
 - Click **Print**.

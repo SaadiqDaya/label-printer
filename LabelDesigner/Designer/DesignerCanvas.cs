@@ -911,7 +911,10 @@ public class DesignerCanvas : Canvas
         outerGrid.Children.Add(dataBorder);
 
         border.Child = outerGrid;
-        return border;
+
+        // Scale the table to FILL the element box (so it resizes with the box instead of being
+        // clipped) — same Viewbox-Fill the print path uses, so the canvas matches the output.
+        return new System.Windows.Controls.Viewbox { Stretch = Stretch.Fill, Child = border };
     }
 
     private static System.Windows.Controls.Viewbox BuildPolygonShape(ShapeElementViewModel vm, string[] points)

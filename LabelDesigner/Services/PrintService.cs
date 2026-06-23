@@ -975,9 +975,12 @@ public static class PrintService
 
         var grid = new Grid { Background = cellFill };
 
+        // Absolute column widths (not Star) so the grid has a NATURAL size — the Viewbox below then
+        // scales the whole table to fill the element box (so it resizes with the box, on canvas and
+        // print alike). col.Width values act as relative proportions once Fill-scaled.
         foreach (var col in te.Columns)
             grid.ColumnDefinitions.Add(new ColumnDefinition
-                { Width = new GridLength(col.Width, GridUnitType.Star) });
+                { Width = new GridLength(Math.Max(1, col.Width)) });
 
         int headerRows = te.ShowHeader ? 1 : 0;
         if (te.ShowHeader)
@@ -1048,7 +1051,9 @@ public static class PrintService
             }
         }
 
-        return grid;
+        // Scale the natural-size table to fill the element box (width AND height) — a table "resizes"
+        // with the box the user draws, and the canvas preview (which uses the same Viewbox-Fill) matches.
+        return new System.Windows.Controls.Viewbox { Stretch = Stretch.Fill, Child = grid };
     }
 
     private static System.Windows.Controls.Viewbox BuildPrintPolygon(

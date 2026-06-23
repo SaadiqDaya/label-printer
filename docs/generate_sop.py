@@ -293,7 +293,7 @@ add_bullet('Font, size, bold/italic/underline, colour, alignment, **Fit to Box**
 add_heading('6.2  Shapes', 2)
 add_para('Rectangle (corner radius), Ellipse, Line, Triangle, Arrow, Diamond — with fill, stroke colour and thickness. Selecting a LINE shows two endpoint handles — drag either end anywhere (all four quadrants) to re-aim it; drag the body to move the whole line.')
 add_heading('6.3  Table', 2)
-add_para('Columns (header / bound field / width), row height, colours, borders, fonts. Static rows or field-bound cells. **Double-click the table on the canvas** to open the spreadsheet-style editor (+ Row / − Row / + Col / − Col, OK applies; rename new columns in the Properties panel, which edits the same data).')
+add_para('Columns (header / bound field / width), row height, colours, borders, fonts. Static rows or field-bound cells. **Double-click the table on the canvas** to open the spreadsheet-style editor (+ Row / − Row / + Col / − Col, OK applies; rename new columns in the Properties panel, which edits the same data). The table SCALES TO FILL the box you draw — resize the element and it grows/shrinks to match (prints the same); column widths set the proportions.')
 page_break()
 
 # 7 BARCODES
@@ -366,7 +366,7 @@ page_break()
 # 12 PRINTING
 add_heading('12. Printing & Print Preview', 1)
 add_screenshot('print-preview.png', 'The Print Preview window.')
-add_numbered('File > Print (Ctrl+P) opens Print Preview.')
+add_numbered('File > Print (Ctrl+P) opens Print Preview. Zoom with −/+, **Fit** (fill the pane — opens fitted) or **1:1** (actual size).')
 add_numbered('Choose the **printer** (a Zebra is preferred automatically) and **quantity**, or tick **Print all records**.')
 add_numbered('Review the preview (exactly what prints) and click **Print**. In Print-all-records mode a JOB LIST appears on the left — every record that will print with its thumbnail and quantity (×N); click one to preview it or step with the ◄ ► arrows. PrintQty-0 rows are excluded — they won\'t print.')
 add_numbered('SHEET templates (Section 5.1): the big preview shows the COMPOSED SHEETS and the arrows page through them; "Start at label #" begins partway down a part-used sheet.')
