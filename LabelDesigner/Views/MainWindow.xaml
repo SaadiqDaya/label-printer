@@ -6,7 +6,8 @@
         xmlns:conv="clr-namespace:LabelDesigner.Converters"
         Title="Label Designer" Height="700" Width="1100"
         MinHeight="500" MinWidth="800"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Style="{StaticResource TenxsWindow}">
 
     <Window.Resources>
         <conv:BoolToVisibilityConverter    x:Key="BoolToVisibility" />
@@ -95,56 +96,51 @@
         </Menu>
 
         <!-- ── Toolbar ──────────────────────────────────────────────────── -->
-        <ToolBar DockPanel.Dock="Top" Height="38">
-            <Button ToolTip="New Template"  Command="{Binding NewCommand}"        Padding="6,2">New</Button>
-            <Button ToolTip="Open Template" Command="{Binding OpenCommand}"       Padding="6,2">Open</Button>
-            <Button ToolTip="Save Template" Command="{Binding SaveCommand}"       Padding="6,2">Save</Button>
+        <ToolBar DockPanel.Dock="Top" Height="40" Padding="4,2">
+            <Button ToolTip="New Template"  Command="{Binding NewCommand}">New</Button>
+            <Button ToolTip="Open Template" Command="{Binding OpenCommand}">Open</Button>
+            <Button ToolTip="Save Template" Command="{Binding SaveCommand}">Save</Button>
             <Separator/>
-            <Button ToolTip="Undo (Ctrl+Z)" Command="{Binding Designer.UndoCommand}" Padding="6,2">↩ Undo</Button>
-            <Button ToolTip="Redo (Ctrl+Y)" Command="{Binding Designer.RedoCommand}" Padding="6,2">↪ Redo</Button>
+            <Button ToolTip="Undo (Ctrl+Z)" Command="{Binding Designer.UndoCommand}">↩ Undo</Button>
+            <Button ToolTip="Redo (Ctrl+Y)" Command="{Binding Designer.RedoCommand}">↪ Redo</Button>
             <Separator/>
-            <Button ToolTip="Add Text"      Command="{Binding AddTextCommand}"      Padding="6,2" Background="#DDEFFF">T Text</Button>
-            <Button ToolTip="Add Barcode"   Command="{Binding AddBarcodeCommand}"   Padding="6,2" Background="#DDEFFF">Barcode</Button>
-            <Button ToolTip="Add Image"     Command="{Binding AddImageCommand}"     Padding="6,2" Background="#DDEFFF">Image</Button>
-            <Button ToolTip="Add Rectangle" Command="{Binding AddRectangleCommand}" Padding="6,2" Background="#DDEFFF">Rect</Button>
+            <Button ToolTip="Add Text"      Command="{Binding AddTextCommand}"      Style="{StaticResource ToolBtnAccent}">T Text</Button>
+            <Button ToolTip="Add Barcode"   Command="{Binding AddBarcodeCommand}"   Style="{StaticResource ToolBtnAccent}">Barcode</Button>
+            <Button ToolTip="Add Image"     Command="{Binding AddImageCommand}"     Style="{StaticResource ToolBtnAccent}">Image</Button>
+            <Button ToolTip="Add Rectangle" Command="{Binding AddRectangleCommand}" Style="{StaticResource ToolBtnAccent}">Rect</Button>
             <ToggleButton ToolTip="Draw Line — click then drag on the canvas to place"
                           Command="{Binding AddLineCommand}"
-                          IsChecked="{Binding Designer.IsLineDrawMode, Mode=OneWay}"
-                          Padding="6,2" Background="#DDEFFF">Line ✏</ToggleButton>
-            <Button ToolTip="Add Table"     Command="{Binding AddTableCommand}"     Padding="6,2" Background="#DDEFFF">Table</Button>
+                          IsChecked="{Binding Designer.IsLineDrawMode, Mode=OneWay}">Line ✏</ToggleButton>
+            <Button ToolTip="Add Table"     Command="{Binding AddTableCommand}"     Style="{StaticResource ToolBtnAccent}">Table</Button>
             <Separator/>
-            <Button ToolTip="Delete selected (Del)" Command="{Binding DeleteSelectedCommand}" Padding="6,2" Background="#FFDDDD">Delete</Button>
+            <Button ToolTip="Delete selected (Del)" Command="{Binding DeleteSelectedCommand}" Style="{StaticResource ToolBtnDanger}">Delete</Button>
             <Separator/>
             <ToggleButton ToolTip="Smart alignment guides — snap to other elements' edges/centres while dragging"
-                          IsChecked="{Binding Designer.SmartGuides}"
-                          Padding="6,2">Guides</ToggleButton>
+                          IsChecked="{Binding Designer.SmartGuides}">Guides</ToggleButton>
             <ToggleButton ToolTip="Snap elements to grid when dragging"
-                          IsChecked="{Binding Designer.SnapToGrid}"
-                          Padding="6,2">Snap</ToggleButton>
+                          IsChecked="{Binding Designer.SnapToGrid}">Snap</ToggleButton>
             <TextBox Width="34" Padding="3,2" Margin="2,0,0,0" VerticalContentAlignment="Center"
                      Text="{Binding Designer.GridSize, UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="Grid size in pixels"
                      Visibility="{Binding Designer.SnapToGrid, Converter={StaticResource BoolToVisibility}}"/>
             <Separator/>
-            <Button ToolTip="Print (Ctrl+P)" Command="{Binding PrintCommand}" Padding="6,2" FontWeight="Bold">Print...</Button>
+            <Button ToolTip="Print (Ctrl+P)" Command="{Binding PrintCommand}" Style="{StaticResource ToolBtnPrimary}">Print…</Button>
             <Separator/>
             <Button ToolTip="Create a blank template sized from a BarTender .btw file"
                     Command="{Binding ImportFromBarTenderCommand}"
-                    Padding="6,2" Background="#FFF3E0" FontWeight="SemiBold">BTW Import...</Button>
+                    Style="{StaticResource ToolBtnPurple}">BTW Import…</Button>
         </ToolBar>
 
         <!-- ── Status bar ───────────────────────────────────────────────── -->
-        <StatusBar DockPanel.Dock="Bottom" Height="22">
+        <StatusBar DockPanel.Dock="Bottom" Height="24">
             <StatusBarItem>
-                <TextBlock Text="{Binding StatusMessage}" />
+                <TextBlock Text="{Binding StatusMessage}" Foreground="White"/>
             </StatusBarItem>
-            <StatusBarItem><Separator/></StatusBarItem>
             <StatusBarItem>
-                <TextBlock Text="{Binding Designer.CurrentFilePath}" Foreground="#888" FontSize="10"/>
+                <TextBlock Text="{Binding Designer.CurrentFilePath}" Foreground="{StaticResource TextMuted}" FontSize="10"/>
             </StatusBarItem>
-            <StatusBarItem><Separator/></StatusBarItem>
             <StatusBarItem>
-                <TextBlock Text="{Binding IpcStatus}" Foreground="#2196F3" FontSize="10"/>
+                <TextBlock Text="{Binding IpcStatus}" Foreground="{StaticResource Cyan}" FontSize="10"/>
             </StatusBarItem>
         </StatusBar>
 
@@ -222,7 +218,7 @@
                                     ToolTip="Add a new layer"/>
                             <Button Content="Delete" Padding="8,2" Margin="0,0,4,0"
                                     Command="{Binding DeleteLayerCommand}"
-                                    Foreground="#C00" ToolTip="Delete selected layer"/>
+                                    Style="{StaticResource BtnDanger}" ToolTip="Delete selected layer"/>
                             <Button Content="↑" Padding="6,2" Margin="0,0,2,0"
                                     Command="{Binding MoveLayerUpCommand}"/>
                             <Button Content="↓" Padding="6,2"
@@ -330,7 +326,7 @@
                             <Button Content="+ Add" Padding="8,2" Margin="0,0,4,0"
                                     Command="{Binding AddDataSourceCommand}"
                                     ToolTip="Add a computed data source (date, time, serial, fixed…)"/>
-                            <Button Content="Delete" Padding="8,2" Foreground="#C00"
+                            <Button Content="Delete" Padding="8,2" Style="{StaticResource BtnDanger}"
                                     Command="{Binding RemoveDataSourceCommand}"
                                     ToolTip="Remove selected data source"/>
                         </StackPanel>
@@ -481,14 +477,14 @@
 
             </TabControl>
 
-            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" Background="#DDDDDD" />
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" />
 
             <!-- ── Designer canvas ── -->
             <local:DesignerView Grid.Column="2"
                                 x:Name="DesignerView"
                                 DataContext="{Binding Designer}" />
 
-            <GridSplitter Grid.Column="3" Width="4" HorizontalAlignment="Stretch" Background="#DDDDDD" />
+            <GridSplitter Grid.Column="3" Width="4" HorizontalAlignment="Stretch" />
 
             <!-- ── Properties panel ── -->
             <local:PropertiesPanel Grid.Column="4"

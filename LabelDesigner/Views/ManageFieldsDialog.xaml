@@ -5,6 +5,7 @@
         Title="Manage Fields &amp; Excel Mapping"
         Width="620" Height="820"
         WindowStartupLocation="CenterOwner"
+        Style="{StaticResource TenxsWindow}"
         ResizeMode="CanResize" ShowInTaskbar="False"
         MinHeight="640" MinWidth="580">
 
@@ -33,7 +34,7 @@
                     Command="{Binding BrowseExcelCommand}"/>
             <Button Grid.Column="2" Content="Auto Map"
                     Padding="8,3" FontWeight="SemiBold"
-                    Background="#E3F2FD" Command="{Binding AutoMapCommand}"
+                    Command="{Binding AutoMapCommand}"
                     ToolTip="Match field names to Excel column headers automatically"/>
         </Grid>
 
@@ -108,7 +109,7 @@
             <Button Grid.Column="1" Content="+ Add" Padding="8,3" Margin="4,0,4,0"
                     Command="{Binding AddFieldCommand}"/>
             <Button Grid.Column="2" Content="Remove Selected" Padding="8,3"
-                    Foreground="#C00" Command="{Binding RemoveFieldCommand}"/>
+                    Style="{StaticResource BtnDanger}" Command="{Binding RemoveFieldCommand}"/>
         </Grid>
 
         <!-- ── Print Qty column ── -->
@@ -134,7 +135,7 @@
                     Margin="0,10,0,0">
             <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="OK" Width="80" IsDefault="True" Click="OK_Click"
-                    Background="#2196F3" Foreground="White" FontWeight="SemiBold"/>
+                    FontWeight="SemiBold"/>
         </StackPanel>
 
         <!-- ── Secondary Excel File (join / lookup) ── -->
@@ -154,7 +155,7 @@
                     <Button Grid.Column="1" Content="Browse…" Padding="8,3" Margin="4,0,4,0"
                             Command="{Binding BrowseSecondaryExcelCommand}"/>
                     <Button Grid.Column="2" Content="Auto Map" Padding="8,3" FontWeight="SemiBold"
-                            Background="#E3F2FD" Command="{Binding AutoMapSecondaryCommand}"
+                            Command="{Binding AutoMapSecondaryCommand}"
                             ToolTip="Match secondary field names to column headers automatically"/>
                 </Grid>
 
@@ -246,7 +247,7 @@
                     <Button Grid.Column="1" Content="+ Add" Padding="8,3" Margin="4,0,4,0"
                             Command="{Binding AddSecondaryFieldCommand}"/>
                     <Button Grid.Column="2" Content="Remove Selected" Padding="8,3"
-                            Foreground="#C00" Command="{Binding RemoveSecondaryFieldCommand}"/>
+                            Style="{StaticResource BtnDanger}" Command="{Binding RemoveSecondaryFieldCommand}"/>
                 </Grid>
 
             </StackPanel>

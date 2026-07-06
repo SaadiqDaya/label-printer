@@ -4,6 +4,7 @@
         Title="Edit Table Data"
         Width="560" Height="420" MinWidth="420" MinHeight="300"
         WindowStartupLocation="CenterOwner"
+        Style="{StaticResource TenxsWindow}"
         ShowInTaskbar="False">
     <DockPanel Margin="10">
         <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" FontSize="11" Foreground="#666" TextWrapping="Wrap"
@@ -13,7 +14,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True"/>
                 <Button Content="OK" Width="80" IsDefault="True" Click="Ok_Click"
-                        Background="#2196F3" Foreground="White"/>
+                       />
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <Button Content="+ Row" Padding="10,3" Margin="0,0,6,0" Click="AddRow_Click"/>

@@ -18,40 +18,38 @@
             <RowDefinition Height="Auto"/>  <!-- record navigation -->
         </Grid.RowDefinitions>
 
-        <!-- Zoom controls -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#444"
-                    VerticalAlignment="Center" Margin="4,0">
-            <Button Content="−" Width="22" Height="20" Margin="0,0,2,0"
-                    Command="{Binding ZoomOutCommand}"
-                    Background="#555" Foreground="White" BorderThickness="0"/>
-            <TextBlock Foreground="White" FontSize="11" VerticalAlignment="Center"
-                       Margin="4,0">
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}Zoom {0}%">
-                        <Binding Path="ZoomPercent"/>
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-            <Button Content="+" Width="22" Height="20" Margin="2,0,0,0"
-                    Command="{Binding ZoomInCommand}"
-                    Background="#555" Foreground="White" BorderThickness="0"/>
-            <Button Content="Reset" Height="20" Padding="6,0" Margin="8,0,0,0"
-                    Command="{Binding ZoomResetCommand}"
-                    Background="#555" Foreground="White" BorderThickness="0"/>
-            <TextBlock Foreground="#AAA" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0"
-                       Text="{Binding TemplateName, StringFormat='  {0}'}"/>
-            <TextBlock Foreground="#888" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0">
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}  {0:F1} × {1:F1} mm">
-                        <Binding Path="WidthMm"/>
-                        <Binding Path="HeightMm"/>
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-        </StackPanel>
+        <!-- Zoom controls (ink bar) -->
+        <Border Grid.Row="0" Background="{StaticResource Ink}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0">
+                <Button Content="−" Width="24" MinHeight="20" Margin="0,0,2,0" Padding="0"
+                        Command="{Binding ZoomOutCommand}" Style="{StaticResource BtnDark}"/>
+                <TextBlock Foreground="White" FontSize="11" VerticalAlignment="Center"
+                           Margin="4,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}Zoom {0}%">
+                            <Binding Path="ZoomPercent"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                <Button Content="+" Width="24" MinHeight="20" Margin="2,0,0,0" Padding="0"
+                        Command="{Binding ZoomInCommand}" Style="{StaticResource BtnDark}"/>
+                <Button Content="Reset" MinHeight="20" Padding="6,0" Margin="8,0,0,0"
+                        Command="{Binding ZoomResetCommand}" Style="{StaticResource BtnDark}"/>
+                <TextBlock Foreground="{StaticResource SidebarText}" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0"
+                           Text="{Binding TemplateName, StringFormat='  {0}'}"/>
+                <TextBlock Foreground="#837B79" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}  {0:F1} × {1:F1} mm">
+                            <Binding Path="WidthMm"/>
+                            <Binding Path="HeightMm"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </StackPanel>
+        </Border>
 
-        <!-- Canvas area -->
-        <Grid Grid.Row="1" Background="#5A5A5A">
+        <!-- Canvas area (warm dark workspace so the white label pops) -->
+        <Grid Grid.Row="1" Background="#4A4546">
             <ScrollViewer x:Name="MainScrollViewer"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
@@ -83,18 +81,17 @@
             </ScrollViewer>
         </Grid>
         <!-- Row 2: Record navigation bar — visible when a data file is connected -->
-        <Border Grid.Row="2" Background="#2E2E2E" Padding="6,4"
+        <Border Grid.Row="2" Background="{StaticResource Ink}" Padding="6,4"
                 Visibility="{Binding HasConnectedFile, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <!-- Load + Unload buttons always shown when file is connected -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <Button Content="⟳ Load" Height="22" Padding="10,0"
+                    <Button Content="⟳ Load" MinHeight="22" Padding="10,0"
                             Command="{Binding LoadDataCommand}"
-                            Background="#2D6A4F" Foreground="White" BorderThickness="0"
                             ToolTip="Load / refresh rows from the connected Excel file"/>
-                    <Button Content="⊘ Unload" Height="22" Padding="8,0" Margin="6,0,0,0"
+                    <Button Content="⊘ Unload" MinHeight="22" Padding="8,0" Margin="6,0,0,0"
                             Command="{Binding ClearDataCommand}"
-                            Background="#6B3A3A" Foreground="White" BorderThickness="0"
+                            Style="{StaticResource BtnDanger}"
                             Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="Disconnect live data and revert to template placeholders"/>
                 </StackPanel>
@@ -102,79 +99,22 @@
                 <!-- Navigation — centred, only visible when rows are loaded -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
                             Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
-                    <Button Content="◄ Prev" Width="62" Height="22"
-                            Command="{Binding PreviousRowCommand}"
-                            Margin="0,0,4,0">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Background" Value="#444"/>
-                                <Setter Property="Foreground" Value="White"/>
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}"
-                                                    BorderThickness="{TemplateBinding BorderThickness}">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter Property="Background" Value="#BBBBBB"/>
-                                                    <Setter Property="Foreground" Value="#444444"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#555555"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <TextBlock Text="{Binding RowInfo}" Foreground="#DDD" FontSize="11"
+                    <Button Content="◄ Prev" Width="62" MinHeight="22" Margin="0,0,4,0"
+                            Command="{Binding PreviousRowCommand}" Style="{StaticResource BtnDark}"/>
+                    <TextBlock Text="{Binding RowInfo}" Foreground="{StaticResource SidebarText}" FontSize="11"
                                VerticalAlignment="Center" Margin="8,0"/>
-                    <TextBlock Text="Go to:" Foreground="#AAA" FontSize="10"
+                    <TextBlock Text="Go to:" Foreground="#837B79" FontSize="10"
                                VerticalAlignment="Center" Margin="8,0,2,0"/>
                     <TextBox x:Name="GotoRowBox" Width="48" Height="20" Padding="2,1"
                              Text="{Binding CurrentRowNumber, UpdateSourceTrigger=LostFocus}"
                              KeyDown="GotoRowBox_KeyDown"
                              ToolTip="Type a record number and press Enter"
                              VerticalContentAlignment="Center"/>
-                    <Button Content="Browse…" Height="22" Padding="8,0" Margin="6,0,0,0"
-                            Command="{Binding BrowseRecordsCommand}"
-                            Background="#444" Foreground="White" BorderThickness="0"
+                    <Button Content="Browse…" MinHeight="22" Padding="8,0" Margin="6,0,0,0"
+                            Command="{Binding BrowseRecordsCommand}" Style="{StaticResource BtnDark}"
                             ToolTip="Open full record list"/>
-                    <Button Content="Next ►" Width="62" Height="22"
-                            Command="{Binding NextRowCommand}"
-                            Margin="4,0,0,0">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Background" Value="#444"/>
-                                <Setter Property="Foreground" Value="White"/>
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}"
-                                                    BorderThickness="{TemplateBinding BorderThickness}">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter Property="Background" Value="#BBBBBB"/>
-                                                    <Setter Property="Foreground" Value="#444444"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#555555"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                    <Button Content="Next ►" Width="62" MinHeight="22" Margin="4,0,0,0"
+                            Command="{Binding NextRowCommand}" Style="{StaticResource BtnDark}"/>
                 </StackPanel>
             </DockPanel>
         </Border>

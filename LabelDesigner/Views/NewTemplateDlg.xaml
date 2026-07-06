@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="New Template" Width="380" Height="480"
         WindowStartupLocation="CenterOwner"
+        Style="{StaticResource TenxsWindow}"
         ResizeMode="NoResize" ShowInTaskbar="False">
     <StackPanel Margin="16">
 
@@ -75,13 +76,13 @@
             </ListBox.ItemTemplate>
         </ListBox>
         <Button Content="Remove Selected" HorizontalAlignment="Left" Padding="8,3"
-                Click="RemoveField_Click" Foreground="#C00"/>
+                Click="RemoveField_Click" Style="{StaticResource BtnDanger}"/>
 
         <!-- Buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="Cancel" Width="70" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="Create" Width="70" IsDefault="True" Click="Create_Click"
-                    Background="#2196F3" Foreground="White"/>
+                   />
         </StackPanel>
     </StackPanel>
 </Window>

@@ -4,6 +4,7 @@
         Title="Label Print Station" Height="740" Width="1160"
         MinHeight="560" MinWidth="940"
         WindowStartupLocation="CenterScreen"
+        Style="{StaticResource TenxsWindow}"
         xmlns:conv="clr-namespace:LabelDesigner.Converters"
         xmlns:beh="clr-namespace:LabelDesigner.Behaviors">
     <Window.Resources>
@@ -22,10 +23,12 @@
             <TabItem Header="Templates">
                 <DockPanel Margin="4">
                     <DockPanel DockPanel.Dock="Top" Margin="0,4,0,6">
-                        <Button DockPanel.Dock="Right" Content="📂" Width="30" Margin="4,0,0,0"
+                        <Button DockPanel.Dock="Right" Content="📂" Width="32" Margin="4,0,0,0"
+                                Style="{StaticResource BtnGhost}"
                                 Command="{Binding OpenTemplatesFolderCommand}"
                                 ToolTip="{Binding TemplatesDir, StringFormat=Open the templates folder: {0}}"/>
-                        <Button DockPanel.Dock="Right" Content="⟳" Width="30" Margin="6,0,0,0"
+                        <Button DockPanel.Dock="Right" Content="⟳" Width="32" Margin="6,0,0,0"
+                                Style="{StaticResource BtnGhost}"
                                 Command="{Binding RefreshCommand}"
                                 ToolTip="Refresh template list (picks up newly saved .lbl files)"/>
                         <TextBox VerticalContentAlignment="Center"
@@ -33,8 +36,9 @@
                                  ToolTip="Type to filter templates by name"/>
                     </DockPanel>
                     <!-- Empty-state help: tell the operator/IT exactly where templates come from. -->
-                    <Border DockPanel.Dock="Top" Background="#FFF8E1" BorderBrush="#E6C200" BorderThickness="1"
-                            Padding="8" Margin="0,0,0,6"
+                    <Border DockPanel.Dock="Top" Background="{StaticResource AmberTint}"
+                            BorderBrush="{StaticResource Amber}" BorderThickness="1"
+                            CornerRadius="8" Padding="8" Margin="0,0,0,6"
                             Visibility="{Binding HasNoTemplates, Converter={StaticResource BoolToVis}}">
                         <TextBlock TextWrapping="Wrap" FontSize="11">
                             <Run Text="No templates found."/>
@@ -46,9 +50,23 @@
                             <Run Text="Design and SAVE them there in the Designer (LabelDesigner.exe without --operator), or have IT point every station at one shared templates folder. Then press ⟳."/>
                         </TextBlock>
                     </Border>
+                    <!-- Template picker as tile cards — the ERP main-menu look. -->
                     <ListBox ItemsSource="{Binding Templates}"
                              SelectedItem="{Binding SelectedTemplate}"
-                             DisplayMemberPath="Name"/>
+                             Style="{StaticResource TileList}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Style="{StaticResource IconChip}" Margin="0,0,10,0">
+                                        <TextBlock Style="{StaticResource IconChipGlyph}" Text="&#xE8EC;"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               FontFamily="{StaticResource BodySemiFont}"
+                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </DockPanel>
             </TabItem>
             <TabItem Header="{Binding JobsHeader}">
@@ -72,21 +90,21 @@
 
         <!-- ── Preview + status ──────────────────────────────────── -->
         <DockPanel Grid.Column="1" Margin="0,0,10,0">
-            <TextBlock DockPanel.Dock="Top" Text="Preview" FontWeight="Bold" FontSize="16" Margin="0,0,0,6"/>
-            <Border DockPanel.Dock="Bottom" Background="#F3F3F3" Padding="8" Margin="0,8,0,0" CornerRadius="3">
+            <TextBlock DockPanel.Dock="Top" Text="Preview" Style="{StaticResource TitleText}" Margin="0,0,0,6"/>
+            <Border DockPanel.Dock="Bottom" Background="{StaticResource Sunken}" Padding="10,8" Margin="0,8,0,0" CornerRadius="8">
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
             </Border>
             <!-- Sheet-job page navigation: composed sheets exactly as they'll print (Avery/menus). -->
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0"
                         Visibility="{Binding ShowJobSheetNav, Converter={StaticResource BoolToVis}}">
-                <Button Content="◄" Width="32" Padding="0" Command="{Binding PrevJobSheetCommand}"
-                        ToolTip="Previous sheet"/>
+                <Button Content="◄" Width="32" Padding="0" Style="{StaticResource BtnGhost}"
+                        Command="{Binding PrevJobSheetCommand}" ToolTip="Previous sheet"/>
                 <TextBlock Text="{Binding JobSheetInfo}" VerticalAlignment="Center" Margin="12,0"
                            MinWidth="120" TextAlignment="Center" FontWeight="SemiBold"/>
-                <Button Content="►" Width="32" Padding="0" Command="{Binding NextJobSheetCommand}"
-                        ToolTip="Next sheet"/>
+                <Button Content="►" Width="32" Padding="0" Style="{StaticResource BtnGhost}"
+                        Command="{Binding NextJobSheetCommand}" ToolTip="Next sheet"/>
             </StackPanel>
-            <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1">
+            <Border Background="White" BorderBrush="{StaticResource Hairline}" BorderThickness="1" CornerRadius="12">
                 <Image Source="{Binding Preview}" Stretch="Uniform" Margin="14"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
             </Border>
@@ -104,7 +122,7 @@
                 <RowDefinition Height="170"/>    <!-- history -->
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Text="Print" FontWeight="Bold" FontSize="16" Margin="0,0,0,8"/>
+            <TextBlock Grid.Row="0" Text="Print" Style="{StaticResource TitleText}" Margin="0,0,0,8"/>
 
             <Grid Grid.Row="1" Margin="0,0,0,8">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -149,10 +167,9 @@
                                   IsChecked="{Binding SkipInvalidRows}"
                                   ToolTip="ON: print the valid rows and list the skipped ones. OFF: any bad row blocks the whole batch."/>
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Print selected" Padding="8,4" Margin="0,0,6,0"
+                            <Button Content="Print selected" Margin="0,0,6,0" Style="{StaticResource BtnPurple}"
                                     Command="{Binding PrintSelectedCommand}" ToolTip="Print the highlighted record × Quantity"/>
-                            <Button Content="Print all in range" Padding="8,4" FontWeight="Bold"
-                                    Foreground="White" Background="#2D7D2D" BorderThickness="0"
+                            <Button Content="Print all in range" FontWeight="Bold"
                                     Command="{Binding PrintAllCommand}"
                                     ToolTip="Print every ticked record in the range at its quantity"/>
                         </StackPanel>
@@ -213,21 +230,21 @@
                 <DockPanel Visibility="{Binding JobMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="PRINT JOB" Padding="14,6" FontWeight="Bold" Margin="0,0,6,0"
-                                    Foreground="White" Background="#2D7D2D" BorderThickness="0"
+                            <Button Content="PRINT JOB" Margin="0,0,6,0" Style="{StaticResource BtnCta}"
                                     Command="{Binding PrintJobCommand}"
                                     ToolTip="Print every ticked row (each group goes to its template's printer)"/>
-                            <Button Content="Reject" Padding="10,6" Margin="0,0,6,0"
+                            <Button Content="Reject" Padding="10,6" Margin="0,0,6,0" Style="{StaticResource BtnDanger}"
                                     Command="{Binding RejectJobCommand}"
                                     ToolTip="Move the job file to the failed folder without printing"/>
-                            <Button Content="Close" Padding="10,6"
+                            <Button Content="Close" Padding="10,6" Style="{StaticResource BtnGhost}"
                                     Command="{Binding CloseJobCommand}"
                                     ToolTip="Leave the job in the queue and go back to templates"/>
                         </StackPanel>
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <Border Background="#FDECEA" BorderBrush="#D9534F" BorderThickness="1" Padding="6" Margin="0,0,0,6"
+                            <Border Background="{StaticResource DangerTint}" BorderBrush="{StaticResource Danger}"
+                                    BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,6"
                                     Visibility="{Binding SelectedJob.HasProblems, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                 <StackPanel>
                                     <TextBlock Text="Rows that cannot print (no template):" FontWeight="SemiBold" Foreground="#B71C1C"/>
@@ -285,21 +302,21 @@
             <!-- Action buttons (template mode) -->
             <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,10,0,0"
                         Visibility="{Binding ShowTemplateActions, Converter={StaticResource BoolToVis}}">
-                <Button Content="PRINT" Width="120" Height="40" FontSize="15" FontWeight="Bold"
-                        Foreground="White" Background="#2D7D2D" BorderThickness="0" Margin="0,0,8,0"
+                <Button Content="PRINT" Width="120" Margin="0,0,8,0" Style="{StaticResource BtnCta}"
                         Command="{Binding PrintCommand}"
                         Visibility="{Binding ShowManual, Converter={StaticResource BoolToVis}}"/>
-                <Button Content="Test print 1" Height="40" Padding="12,0" Margin="0,0,8,0"
+                <Button Content="Test print 1" MinHeight="40" Padding="12,0" Margin="0,0,8,0"
+                        Style="{StaticResource BtnPurple}"
                         Command="{Binding TestPrintCommand}"
                         ToolTip="Print one proof label without using a serial number"/>
-                <Button Content="Export ZPL" Height="40" Padding="12,0"
+                <Button Content="Export ZPL" MinHeight="40" Padding="12,0" Style="{StaticResource BtnGhost}"
                         Command="{Binding ExportZplCommand}"
                         ToolTip="Save the native ZPL for the current label (inspect without a Zebra)"/>
             </StackPanel>
 
             <!-- History -->
             <DockPanel Grid.Row="5" Margin="0,12,0,4">
-                <Button DockPanel.Dock="Right" Content="Export CSV" Padding="8,2"
+                <Button DockPanel.Dock="Right" Content="Export CSV" Padding="8,2" Style="{StaticResource BtnGhost}"
                         Command="{Binding ExportHistoryCommand}" ToolTip="Export the full print history for audit/reconciliation"/>
                 <TextBlock Text="Recent prints — Reprint repeats the original IDs" FontWeight="Bold" VerticalAlignment="Center"/>
             </DockPanel>
@@ -308,6 +325,7 @@
                     <DataTemplate>
                         <DockPanel LastChildFill="True">
                             <Button DockPanel.Dock="Right" Content="Reprint" Padding="8,2" Margin="6,0,0,0"
+                                    Style="{StaticResource BtnPurple}"
                                     Command="{Binding DataContext.ReprintCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}"/>
                             <TextBlock Text="{Binding Display}" TextWrapping="Wrap" VerticalAlignment="Center"/>

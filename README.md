@@ -64,6 +64,18 @@ safe across machines.
 > ⚠️ Use a real SMB/UNC share for the shared data dir — **not** a OneDrive/SharePoint-synced folder
 > (sync clients don't honour cross-machine file locks → duplicate serial numbers).
 
+## Theme
+
+The UI follows the **Tenxs ERP (Jvnction 2026) design system** — ink `#231F20` bars, cyan `#06C0D3`
+CTA, purple `#6A4BF2` secondary, warm off-white `#F8F6F5` page, white rounded cards, and the bundled
+Archivo / Hanken Grotesk / JetBrains Mono fonts (`Fonts/`, embedded resources). Everything lives in
+`Themes/TenxsTheme.xaml` (merged in `App.xaml`): implicit styles restyle Button/ToggleButton/TextBox/
+CheckBox/ListBox/TabItem/GroupBox/DataGrid/Menu/StatusBar app-wide; named styles are `BtnPurple`,
+`BtnDanger`, `BtnGhost` (Cancel-type only — `IsCancel="True"` buttons ghost automatically), `BtnCta`,
+`BtnDark` (ink bars), `ToolBtn*` (toolbar accents), `Card`/`IconChip`/`TileList` (ERP tile cards).
+Windows opt in with `Style="{StaticResource TenxsWindow}"`. House rule: **solid colour = live
+action**; grey/outline is reserved for Cancel/Close.
+
 ## Key concepts
 
 - **Templates** (`.lbl`, JSON via `$type` polymorphism) hold elements, layers, fields, data sources, and a `PrinterProfile` (DPI, darkness/speed/media, output backend).

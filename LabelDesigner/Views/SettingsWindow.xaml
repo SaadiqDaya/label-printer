@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:LabelDesigner.Converters"
         Title="Settings" Width="640" Height="640"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" MinWidth="560" MinHeight="540"
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource TenxsWindow}" ResizeMode="CanResize" MinWidth="560" MinHeight="540"
         ShowInTaskbar="False">
     <Window.Resources>
         <conv:InverseBoolConverter x:Key="InverseBool"/>
@@ -14,7 +15,7 @@
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
             <Button Content="Cancel" Width="80" Margin="0,0,8,0" Command="{Binding CancelCommand}" IsCancel="True"/>
             <Button Content="Save" Width="80" Command="{Binding SaveCommand}" IsDefault="True"
-                    Background="#2196F3" Foreground="White"/>
+                   />
         </StackPanel>
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Foreground="#B00020" TextWrapping="Wrap" FontSize="11"/>
 
