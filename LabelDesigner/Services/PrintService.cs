@@ -973,87 +973,13 @@ public static class PrintService
                   }).ToList()
               };
 
-        var grid = new Grid { Background = cellFill };
-
-        // Absolute column widths (not Star) so the grid has a NATURAL size — the Viewbox below then
-        // scales the whole table to fill the element box (so it resizes with the box, on canvas and
-        // print alike). col.Width values act as relative proportions once Fill-scaled.
-        foreach (var col in te.Columns)
-            grid.ColumnDefinitions.Add(new ColumnDefinition
-                { Width = new GridLength(Math.Max(1, col.Width)) });
-
-        int headerRows = te.ShowHeader ? 1 : 0;
-        if (te.ShowHeader)
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(te.RowHeight) });
-
-        foreach (var _ in dataRows)
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(te.RowHeight) });
-
-        // Header row
-        if (te.ShowHeader)
-        {
-            for (int ci = 0; ci < te.Columns.Count; ci++)
-            {
-                var headerCell = new Border
-                {
-                    Background      = headerFill,
-                    BorderBrush     = borderBrush,
-                    BorderThickness = new Thickness(bt)
-                };
-                headerCell.Child = new TextBlock
-                {
-                    Text                = te.Columns[ci].Header,
-                    FontFamily          = new FontFamily(te.FontFamily),
-                    FontSize            = te.HeaderFontSize,
-                    FontWeight          = FontWeights.Bold,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment   = VerticalAlignment.Center,
-                    Margin              = new Thickness(2)
-                };
-                Grid.SetRow(headerCell, 0);
-                Grid.SetColumn(headerCell, ci);
-                grid.Children.Add(headerCell);
-            }
-        }
-
-        // Data rows
-        for (int ri = 0; ri < dataRows.Count; ri++)
-        {
-            var rowData = dataRows[ri];
-            int gridRow = headerRows + ri;
-            for (int ci = 0; ci < te.Columns.Count; ci++)
-            {
-                string cellValue = ci < rowData.Count ? rowData[ci] : "";
-                // If static rows are empty and there's a bound field, use live data
-                if (te.StaticRows.Count == 0 && string.IsNullOrEmpty(cellValue) &&
-                    !string.IsNullOrEmpty(te.Columns[ci].BoundField))
-                    fields.TryGetValue(te.Columns[ci].BoundField, out cellValue!);
-
-                var dataCell = new Border
-                {
-                    Background      = cellFill,
-                    BorderBrush     = borderBrush,
-                    BorderThickness = new Thickness(bt)
-                };
-                dataCell.Child = new TextBlock
-                {
-                    Text                = cellValue ?? "",
-                    FontFamily          = new FontFamily(te.FontFamily),
-                    FontSize            = te.CellFontSize,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment   = VerticalAlignment.Center,
-                    TextWrapping        = TextWrapping.Wrap,
-                    Margin              = new Thickness(2)
-                };
-                Grid.SetRow(dataCell, gridRow);
-                Grid.SetColumn(dataCell, ci);
-                grid.Children.Add(dataCell);
-            }
-        }
-
-        // Scale the natural-size table to fill the element box (width AND height) — a table "resizes"
-        // with the box the user draws, and the canvas preview (which uses the same Viewbox-Fill) matches.
-        return new System.Windows.Controls.Viewbox { Stretch = Stretch.Fill, Child = grid };
+        // Shared layout with the designer canvas (Helpers.TableLayout): the table is laid out AT
+        // the element box's size — star columns, rows sharing the height, fonts at configured size.
+        return Helpers.TableLayout.Build(
+            te.Columns.Select(c => (c.Header, c.Width)).ToList(),
+            dataRows.Select(r => (IReadOnlyList<string>)r).ToList(),
+            te.ShowHeader, headerFill, cellFill, borderBrush, bt,
+            te.FontFamily, te.HeaderFontSize, te.CellFontSize);
     }
 
     private static System.Windows.Controls.Viewbox BuildPrintPolygon(

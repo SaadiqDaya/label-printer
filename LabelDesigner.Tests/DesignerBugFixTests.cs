@@ -363,9 +363,9 @@ public class TableFillsBoxTests
     {
         RunSta(() =>
         {
-            // A 1-column table (natural ~60×20 DIU) on an 80×40 mm white label. With the old
-            // clip-at-natural-size behaviour the bottom-right of the box would be blank; with
-            // Viewbox-Fill the black-celled table covers the whole box.
+            // A 1-column table on an 80×40 mm white label. With the old clip-at-natural-size
+            // behaviour the bottom-right of the box would be blank; the container-bound layout
+            // (TableLayout) fills the element box, so the black-celled table covers all of it.
             var t = new Core.Models.LabelTemplate { Name = "T", WidthMm = 80, HeightMm = 40, BackgroundColor = "#FFFFFF" };
             t.Elements.Add(new Core.Models.TableElement
             {

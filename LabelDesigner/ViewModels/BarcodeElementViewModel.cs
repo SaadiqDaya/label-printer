@@ -36,6 +36,8 @@ public class BarcodeElementViewModel : ElementViewModelBase
         set { if (Set(ref _boundField, value)) RefreshBarcodeImage(); }
     }
 
+    protected override string? BoundFieldValue { get => BoundField; set => BoundField = value; }
+
     public BarcodeFormatOption Format
     {
         get => _format;

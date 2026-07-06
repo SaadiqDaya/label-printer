@@ -124,7 +124,7 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="44"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="42"/>
+                            <ColumnDefinition Width="48"/>
                         </Grid.ColumnDefinitions>
                         <ComboBox x:Name="CondFieldPicker" Grid.Column="0"
                                   ItemsSource="{Binding AvailableFields}"
@@ -144,8 +144,8 @@
                         <TextBox x:Name="CondValueBox" Grid.Column="2" Margin="0,2,0,2"
                                  FontSize="10" Height="22"
                                  ToolTip="Comparison value (no quotes needed)"/>
-                        <Button Grid.Column="3" Content="↵ Add" Margin="2,2,0,2"
-                                FontSize="9" Height="22"
+                        <Button Grid.Column="3" Content="Add" Margin="2,2,0,2"
+                                FontSize="10" Height="22" Padding="2,0" MinHeight="22"
                                 Click="InsertCondition_Click"
                                 ToolTip="Add this condition clause"/>
                     </Grid>
@@ -182,11 +182,16 @@
                                     <TextBlock Text="Default Value" Style="{StaticResource Label}"/>
                                     <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
 
-                                    <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
+                                    <TextBlock Text="Binding" Style="{StaticResource Label}"/>
+                                    <ComboBox ItemsSource="{x:Static vm:ElementViewModelBase.BindingModes}"
+                                              SelectedItem="{Binding BindingMode}"
+                                              ToolTip="No binding = static text · Database field = a data-file column · Named variable = a Data-tab source"/>
+                                    <TextBlock Text="Bound Field" Style="{StaticResource Label}"/>
                                     <ComboBox IsEditable="True"
-                                              ItemsSource="{Binding AvailableFields}"
+                                              IsEnabled="{Binding IsBindingEnabled}"
+                                              ItemsSource="{Binding BindingChoices}"
                                               Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
-                                              ToolTip="Select a field from the Data tab or leave blank for static text" />
+                                              ToolTip="The column or variable whose value this element shows" />
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Font">
@@ -254,11 +259,16 @@
                                 <TextBlock Text="Value (preview)" Style="{StaticResource Label}"/>
                                 <TextBox Text="{Binding BarcodeValue, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Text="Bound Field (optional)" Style="{StaticResource Label}"/>
+                                <TextBlock Text="Binding" Style="{StaticResource Label}"/>
+                                <ComboBox ItemsSource="{x:Static vm:ElementViewModelBase.BindingModes}"
+                                          SelectedItem="{Binding BindingMode}"
+                                          ToolTip="No binding = static value · Database field = a data-file column · Named variable = a Data-tab source"/>
+                                <TextBlock Text="Bound Field" Style="{StaticResource Label}"/>
                                 <ComboBox IsEditable="True"
-                                          ItemsSource="{Binding AvailableFields}"
+                                          IsEnabled="{Binding IsBindingEnabled}"
+                                          ItemsSource="{Binding BindingChoices}"
                                           Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
-                                          ToolTip="Select a field from the Data tab or leave blank for static value" />
+                                          ToolTip="The column or variable whose value this barcode encodes" />
 
                                 <TextBlock Text="Format" Style="{StaticResource Label}"/>
                                 <ComboBox SelectedItem="{Binding Format}"
@@ -317,8 +327,13 @@
                                     <Button Grid.Column="1" Content="..." Width="26" Margin="2,2,0,4"
                                             Click="BrowseImage_Click"/>
                                 </Grid>
+                                <TextBlock Text="Binding" Style="{StaticResource Label}"/>
+                                <ComboBox ItemsSource="{x:Static vm:ElementViewModelBase.BindingModes}"
+                                          SelectedItem="{Binding BindingMode}"
+                                          ToolTip="No binding = static image · Database field = path from a data-file column · Named variable = path from a Data-tab source"/>
                                 <TextBlock Text="Bound Field (path from data)" Style="{StaticResource Label}"/>
-                                <ComboBox IsEditable="True" ItemsSource="{Binding AvailableFields}"
+                                <ComboBox IsEditable="True" IsEnabled="{Binding IsBindingEnabled}"
+                                          ItemsSource="{Binding BindingChoices}"
                                           Text="{Binding BoundField, UpdateSourceTrigger=PropertyChanged}"
                                           ToolTip="When set, the image file path comes from this field per record"/>
                                 <TextBlock Text="Base Folder (optional)" Style="{StaticResource Label}"/>
@@ -524,8 +539,6 @@
                             <GroupBox Header="Style">
                                 <StackPanel>
                                     <CheckBox Content="Show Header Row" IsChecked="{Binding ShowHeader}" Margin="0,0,0,4"/>
-                                    <TextBlock Text="Row Height" Style="{StaticResource Label}"/>
-                                    <TextBox Text="{Binding RowHeight, UpdateSourceTrigger=LostFocus}"/>
                                     <TextBlock Text="Header Background" Style="{StaticResource Label}"/>
                                     <TextBox Text="{Binding HeaderBackground, UpdateSourceTrigger=PropertyChanged}"/>
                                     <TextBlock Text="Cell Background" Style="{StaticResource Label}"/>

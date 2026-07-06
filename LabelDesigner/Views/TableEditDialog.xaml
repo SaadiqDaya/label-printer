@@ -8,7 +8,7 @@
         ShowInTaskbar="False">
     <DockPanel Margin="10">
         <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" FontSize="11" Foreground="#666" TextWrapping="Wrap"
-                   Text="Click a cell and type to edit. + Col / − Col change the columns; rename a column (and set its bound field / width) in the Properties panel."/>
+                   Text="Click a cell and type to edit — the column HEADERS are editable too (click the header box). + Col / − Col change the columns; bound fields / width proportions live in the Properties panel."/>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">

@@ -23,6 +23,82 @@ public abstract class ElementViewModelBase : ViewModelBase
     /// <summary>Field names available for binding — populated by DesignerViewModel from the current template.</summary>
     public ObservableCollection<string> AvailableFields { get; } = new() { "" };
 
+    /// <summary>Data-file column fields only (template.Fields) — populated by DesignerViewModel.</summary>
+    public ObservableCollection<string> AvailableColumnFields { get; } = new() { "" };
+
+    /// <summary>Named data-source variables only (Data tab sources) — populated by DesignerViewModel.</summary>
+    public ObservableCollection<string> AvailableSourceNames { get; } = new() { "" };
+
+    // ─── Binding mode ─────────────────────────────────────────────────────────
+
+    public const string BindNone     = "No binding";
+    public const string BindColumn   = "Database field";
+    public const string BindVariable = "Named variable";
+
+    public static string[] BindingModes { get; } = [BindNone, BindColumn, BindVariable];
+
+    private string _bindingMode = "";
+
+    /// <summary>
+    /// What the element's value is bound to: nothing (static), a data-file column, or a named
+    /// data source. Purely a UI filter over <see cref="BoundFieldValue"/> — the model stores just
+    /// the field name either way. Derived from the current BoundField on first read; choosing
+    /// "No binding" clears the field.
+    /// </summary>
+    public string BindingMode
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_bindingMode)) _bindingMode = DeriveBindingMode();
+            return _bindingMode;
+        }
+        set
+        {
+            if (string.IsNullOrEmpty(value) || !Set(ref _bindingMode, value)) return;
+            if (value == BindNone && !string.IsNullOrEmpty(BoundFieldValue)) BoundFieldValue = "";
+            OnPropertyChanged(nameof(BindingChoices));
+            OnPropertyChanged(nameof(IsBindingEnabled));
+        }
+    }
+
+    /// <summary>The list the Bound Field combo offers, filtered by the chosen mode.</summary>
+    public ObservableCollection<string> BindingChoices =>
+        BindingMode == BindVariable ? AvailableSourceNames : AvailableColumnFields;
+
+    public bool IsBindingEnabled => BindingMode != BindNone;
+
+    /// <summary>Bridges the subclass's BoundField property so the base can drive it. Elements
+    /// without a bindable value (shapes) leave the default no-op.</summary>
+    protected virtual string? BoundFieldValue { get => null; set { } }
+
+    private string DeriveBindingMode()
+    {
+        var f = BoundFieldValue;
+        if (string.IsNullOrWhiteSpace(f)) return BindNone;
+        return AvailableSourceNames.Contains(f, StringComparer.OrdinalIgnoreCase) ? BindVariable : BindColumn;
+    }
+
+    /// <summary>
+    /// Re-derives the mode from the current BoundField (after loads and field-list syncs).
+    /// A blank BoundField never stomps an explicit user choice — otherwise picking a mode and
+    /// then clicking elsewhere would reset the dropdown before a field was chosen.
+    /// </summary>
+    public void RefreshBindingMode()
+    {
+        if (string.IsNullOrWhiteSpace(BoundFieldValue))
+        {
+            if (string.IsNullOrEmpty(_bindingMode))
+                OnPropertyChanged(nameof(BindingMode));   // let the lazy getter derive "No binding"
+            return;
+        }
+        var derived = DeriveBindingMode();
+        if (_bindingMode == derived) return;
+        _bindingMode = derived;
+        OnPropertyChanged(nameof(BindingMode));
+        OnPropertyChanged(nameof(BindingChoices));
+        OnPropertyChanged(nameof(IsBindingEnabled));
+    }
+
     /// <summary>Layers available for assignment — populated by DesignerViewModel.</summary>
     public ObservableCollection<LayerViewModel> AvailableLayers { get; } = new();
 

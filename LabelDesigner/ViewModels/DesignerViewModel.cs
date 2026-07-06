@@ -849,7 +849,12 @@ public class DesignerViewModel : ViewModelBase
     }
 
     private void SyncElementFields(ElementViewModelBase vm)
-        => ReplaceIfChanged(vm.AvailableFields, BuildFieldList(includeBlank: true));
+    {
+        ReplaceIfChanged(vm.AvailableFields, BuildFieldList(includeBlank: true));
+        ReplaceIfChanged(vm.AvailableColumnFields, BuildColumnFieldList());
+        ReplaceIfChanged(vm.AvailableSourceNames, BuildSourceNameList());
+        vm.RefreshBindingMode();
+    }
 
     private void SyncLayerFields(LayerViewModel layer)
         => ReplaceIfChanged(layer.AvailableFields, BuildFieldList(includeBlank: false));
@@ -860,6 +865,24 @@ public class DesignerViewModel : ViewModelBase
         if (includeBlank) list.Add("");
         foreach (var f in _template.Fields)
             list.Add(f);
+        foreach (var ds in DataSources)
+            if (!string.IsNullOrEmpty(ds.Name) && !list.Contains(ds.Name))
+                list.Add(ds.Name);
+        return list;
+    }
+
+    /// <summary>Data-file columns only — the "Database field" binding-mode choices.</summary>
+    private List<string> BuildColumnFieldList()
+    {
+        var list = new List<string> { "" };
+        foreach (var f in _template.Fields) list.Add(f);
+        return list;
+    }
+
+    /// <summary>Named data sources only — the "Named variable" binding-mode choices.</summary>
+    private List<string> BuildSourceNameList()
+    {
+        var list = new List<string> { "" };
         foreach (var ds in DataSources)
             if (!string.IsNullOrEmpty(ds.Name) && !list.Contains(ds.Name))
                 list.Add(ds.Name);

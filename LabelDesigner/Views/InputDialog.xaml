@@ -1,7 +1,7 @@
 <Window x:Class="LabelDesigner.Views.InputDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Input" Width="340" Height="148"
+        Title="Input" Width="340" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         Style="{StaticResource TenxsWindow}"
         ResizeMode="NoResize" ShowInTaskbar="False">

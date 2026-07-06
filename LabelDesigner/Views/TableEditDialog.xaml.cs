@@ -16,6 +16,7 @@ public partial class TableEditDialog : Window
 {
     private readonly TableElementViewModel _vm;
     private readonly ObservableCollection<string[]> _rows = new();
+    private readonly List<TextBox> _headerBoxes = new();
     private int _colCount;
 
     public TableEditDialog(TableElementViewModel vm)
@@ -39,13 +40,23 @@ public partial class TableEditDialog : Window
         EditGrid.ItemsSource = _rows;
     }
 
-    private static DataGridTextColumn MakeColumn(string header, int index) => new()
+    private DataGridTextColumn MakeColumn(string header, int index)
     {
-        // TextBlock header so underscores aren't access keys.
-        Header  = new TextBlock { Text = string.IsNullOrWhiteSpace(header) ? $"Column {index + 1}" : header },
-        Binding = new Binding($"[{index}]") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus },
-        Width   = new DataGridLength(1, DataGridLengthUnitType.Star)
-    };
+        // The column header IS a TextBox — headers are edited in place, right above their column.
+        var headerBox = new TextBox
+        {
+            Text     = string.IsNullOrWhiteSpace(header) ? $"Column {index + 1}" : header,
+            MinWidth = 60,
+            ToolTip  = "Column header — click to rename"
+        };
+        _headerBoxes.Add(headerBox);
+        return new DataGridTextColumn
+        {
+            Header  = headerBox,
+            Binding = new Binding($"[{index}]") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus },
+            Width   = new DataGridLength(1, DataGridLengthUnitType.Star)
+        };
+    }
 
     private string[] NewRow()
     {
@@ -90,6 +101,7 @@ public partial class TableEditDialog : Window
         CommitPendingEdits();
         _colCount--;
         EditGrid.Columns.RemoveAt(EditGrid.Columns.Count - 1);
+        _headerBoxes.RemoveAt(_headerBoxes.Count - 1);
         ResizeAllRows();
     }
 
@@ -112,9 +124,13 @@ public partial class TableEditDialog : Window
         CommitPendingEdits();
 
         // Sync the column COUNT through the VM's own commands (they keep canvas rows in step).
-        // Headers/bound fields/widths of surviving columns are untouched; new ones get defaults.
+        // Bound fields/widths of surviving columns are untouched; new ones get defaults.
         while (_vm.Columns.Count < _colCount) _vm.AddColumnCommand.Execute(null);
         while (_vm.Columns.Count > _colCount && _vm.Columns.Count > 1) _vm.RemoveColumnCommand.Execute(null);
+
+        // Header names come straight from the in-place header boxes.
+        for (int c = 0; c < _colCount && c < _headerBoxes.Count; c++)
+            _vm.Columns[c].Header = _headerBoxes[c].Text.Trim();
 
         _vm.Rows.Clear();
         foreach (var arr in _rows)

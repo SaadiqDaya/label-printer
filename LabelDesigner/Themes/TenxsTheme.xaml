@@ -56,7 +56,8 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
         <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
         <Setter Property="FontSize" Value="12.5"/>
-        <Setter Property="UseLayoutRounding" Value="True"/>
+        <!-- NO UseLayoutRounding here: it inherits into the designer's adorner layer and
+             quantizes the zoomed drag math (line-endpoint editing went "weird"). -->
         <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
     </Style>
 

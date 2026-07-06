@@ -232,12 +232,11 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <DockPanel>
-                                        <ToggleButton DockPanel.Dock="Right" Width="22" Height="18"
-                                                      Content="✕" FontSize="9" Margin="2,0,0,0"
+                                        <ToggleButton DockPanel.Dock="Right" Width="42" Height="20"
+                                                      Content="Hide" FontSize="10" Margin="2,0,0,0"
                                                       IsChecked="{Binding IsHidden}"
-                                                      ToolTip="Hide layer completely in designer"
-                                                      Padding="0"
-                                                      Background="Transparent" BorderThickness="1"/>
+                                                      ToolTip="Hide this layer on the canvas for this session — not saved with the template and NEVER affects printing (only Print Conditions do)"
+                                                      Padding="0" MinHeight="20"/>
                                         <CheckBox DockPanel.Dock="Left"
                                                   IsChecked="{Binding IsVisible}"
                                                   VerticalAlignment="Center"
@@ -266,7 +265,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="44"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="42"/>
+                                        <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <ComboBox x:Name="LayerCondFieldPicker" Grid.Column="0"
                                               ItemsSource="{Binding AvailableFields}"
@@ -286,8 +285,8 @@
                                     <TextBox x:Name="LayerCondValueBox" Grid.Column="2" Margin="0,2,0,2"
                                              FontSize="10" Height="22"
                                              ToolTip="Comparison value"/>
-                                    <Button Grid.Column="3" Content="↵ Add" Margin="2,2,0,2"
-                                            FontSize="9" Height="22"
+                                    <Button Grid.Column="3" Content="Add" Margin="2,2,0,2"
+                                            FontSize="10" Height="22" Padding="2,0" MinHeight="22"
                                             Click="LayerInsertCondition_Click"/>
                                 </Grid>
                                 <!-- Condition list -->

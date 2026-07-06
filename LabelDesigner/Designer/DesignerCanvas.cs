@@ -826,96 +826,9 @@ public class DesignerCanvas : Canvas
     }
 
     private static UIElement BuildTableView(TableElementViewModel vm)
-    {
-        var border = new Border { DataContext = vm, BorderThickness = new Thickness(1), ClipToBounds = true };
-        border.SetBinding(Border.BorderBrushProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.BorderBrush)));
-
-        var outerGrid = new Grid();
-        outerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        // ── Header row ─────────────────────────────────────────────────────
-        var headerBorder = new Border { BorderThickness = new Thickness(0, 0, 0, 1) };
-        headerBorder.SetBinding(Border.BackgroundProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.HeaderBrush)));
-        headerBorder.SetBinding(Border.BorderBrushProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.BorderBrush)));
-
-        // Each column header cell
-        var headerCellFactory = new FrameworkElementFactory(typeof(Border));
-        headerCellFactory.SetBinding(Border.WidthProperty,
-            new System.Windows.Data.Binding(nameof(TableColumnViewModel.Width)));
-        headerCellFactory.SetValue(Border.BorderThicknessProperty, new Thickness(0, 0, 1, 0));
-        headerCellFactory.SetValue(Border.PaddingProperty, new Thickness(3, 2, 3, 2));
-        var headerTbFactory = new FrameworkElementFactory(typeof(TextBlock));
-        headerTbFactory.SetBinding(TextBlock.TextProperty,
-            new System.Windows.Data.Binding(nameof(TableColumnViewModel.Header)));
-        headerTbFactory.SetValue(TextBlock.FontSizeProperty, 9.0);
-        headerTbFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
-        headerCellFactory.AppendChild(headerTbFactory);
-        var headerItemTemplate = new DataTemplate { VisualTree = headerCellFactory };
-
-        var headerPanel = new FrameworkElementFactory(typeof(StackPanel));
-        headerPanel.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
-
-        var headerIc = new ItemsControl { ItemTemplate = headerItemTemplate, DataContext = vm };
-        headerIc.ItemsPanel = new ItemsPanelTemplate(headerPanel);
-        headerIc.SetBinding(ItemsControl.ItemsSourceProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.Columns)));
-        headerBorder.Child = headerIc;
-        Grid.SetRow(headerBorder, 0);
-        outerGrid.Children.Add(headerBorder);
-
-        // ── Rows area: each row → horizontal strip of cell TextBlocks ────────
-        // Cell template: TextBlock per cell in a row
-        var cellTextFef = new FrameworkElementFactory(typeof(TextBlock));
-        cellTextFef.SetBinding(TextBlock.TextProperty,
-            new System.Windows.Data.Binding(nameof(TableCellViewModel.Value)));
-        cellTextFef.SetValue(TextBlock.FontSizeProperty, 8.0);
-        cellTextFef.SetValue(TextBlock.MinWidthProperty, 30.0);
-        cellTextFef.SetValue(TextBlock.PaddingProperty, new Thickness(2, 1, 2, 1));
-        var cellBorderFef = new FrameworkElementFactory(typeof(Border));
-        cellBorderFef.SetValue(Border.BorderThicknessProperty, new Thickness(0, 0, 1, 0));
-        cellBorderFef.AppendChild(cellTextFef);
-        var cellTemplate = new DataTemplate { VisualTree = cellBorderFef };
-
-        var cellPanelFef = new FrameworkElementFactory(typeof(StackPanel));
-        cellPanelFef.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
-
-        // Row template: ItemsControl over Cells
-        var rowCellsIcFef = new FrameworkElementFactory(typeof(ItemsControl));
-        rowCellsIcFef.SetValue(ItemsControl.ItemTemplateProperty, cellTemplate);
-        rowCellsIcFef.SetValue(ItemsControl.ItemsPanelProperty, new ItemsPanelTemplate(cellPanelFef));
-        rowCellsIcFef.SetBinding(ItemsControl.ItemsSourceProperty,
-            new System.Windows.Data.Binding(nameof(TableRowViewModel.Cells)));
-
-        var rowBorderFef = new FrameworkElementFactory(typeof(Border));
-        rowBorderFef.SetValue(Border.BorderThicknessProperty, new Thickness(0, 0, 0, 1));
-        rowBorderFef.AppendChild(rowCellsIcFef);
-        var rowTemplate = new DataTemplate { VisualTree = rowBorderFef };
-
-        var rowsPanelFef = new FrameworkElementFactory(typeof(StackPanel));
-        rowsPanelFef.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
-
-        var rowsIc = new ItemsControl { ItemTemplate = rowTemplate, DataContext = vm };
-        rowsIc.ItemsPanel = new ItemsPanelTemplate(rowsPanelFef);
-        rowsIc.SetBinding(ItemsControl.ItemsSourceProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.Rows)));
-
-        var dataBorder = new Border();
-        dataBorder.SetBinding(Border.BackgroundProperty,
-            new System.Windows.Data.Binding(nameof(TableElementViewModel.CellBrush)));
-        dataBorder.Child = rowsIc;
-        Grid.SetRow(dataBorder, 1);
-        outerGrid.Children.Add(dataBorder);
-
-        border.Child = outerGrid;
-
-        // Scale the table to FILL the element box (so it resizes with the box instead of being
-        // clipped) — same Viewbox-Fill the print path uses, so the canvas matches the output.
-        return new System.Windows.Controls.Viewbox { Stretch = Stretch.Fill, Child = border };
-    }
+        // Renders through the same Helpers.TableLayout the print path uses; the control
+        // rebuilds itself on any structural or styling change (render parity by construction).
+        => new TableCanvasView(vm);
 
     private static System.Windows.Controls.Viewbox BuildPolygonShape(ShapeElementViewModel vm, string[] points)
     {

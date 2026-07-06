@@ -5,6 +5,13 @@ public class Layer
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Layer 1";
     public bool IsVisible { get; set; } = true;
+
+    /// <summary>
+    /// Hides the layer on the design canvas for THIS SESSION only — deliberately not persisted
+    /// (JsonIgnore) and never consulted by the print path, so a designer's temporary hide can't
+    /// leak into the saved template or change what prints.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool IsHidden { get; set; } = false;
 
     /// <summary>

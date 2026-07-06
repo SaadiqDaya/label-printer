@@ -46,6 +46,8 @@ public class TextElementViewModel : ElementViewModelBase
         set { if (Set(ref _boundField, value)) UpdatePreviewText(); }
     }
 
+    protected override string? BoundFieldValue { get => BoundField; set => BoundField = value; }
+
     public override void UpdatePreview(Dictionary<string, string>? fields)
     {
         _liveFields = fields;

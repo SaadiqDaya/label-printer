@@ -31,6 +31,7 @@ public class ImageElementViewModel : ElementViewModelBase
 
     public string ImagePath { get => _imagePath; set { if (Set(ref _imagePath, value)) { Invalidate(); OnPropertyChanged(nameof(DisplayName)); } } }
     public string? BoundField { get => _boundField; set { if (Set(ref _boundField, value)) { Invalidate(); OnPropertyChanged(nameof(DisplayName)); } } }
+    protected override string? BoundFieldValue { get => BoundField; set => BoundField = value; }
     public string? ImageBaseFolder { get => _imageBaseFolder; set { if (Set(ref _imageBaseFolder, value)) Invalidate(); } }
     public bool MaintainAspectRatio { get => _maintainAspectRatio; set => Set(ref _maintainAspectRatio, value); }
     public double Opacity { get => _opacity; set => Set(ref _opacity, Math.Clamp(value, 0, 1)); }
