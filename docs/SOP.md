@@ -27,6 +27,8 @@
 17. [JaneERP Integration](#17-janeerp-integration)
 18. [Troubleshooting & FAQs](#18-troubleshooting--faqs)
 19. [IT Setup & Deployment](#19-it-setup--deployment)
+20. [Migrating from BarTender](#20-migrating-from-bartender)
+21. [Hardware Validation (before production cut-over)](#21-hardware-validation-before-production-cut-over)
 
 ---
 
@@ -557,6 +559,78 @@ The Print Station can serve a small local web API, compatible with the **BarTend
 - Every printed label lands in the normal print history (source `HTTP`), so reprints work as usual.
 
 **Security:** the API listens on **localhost only** — other machines cannot reach it. Run the calling system on the same PC as the Print Station (that is also how the BarTender shim is deployed).
+
+---
+
+## 20. Migrating from BarTender
+
+BarTender's `.btw` format is a proprietary binary and **cannot be converted losslessly** — each label is rebuilt once in the Designer. The **migration assistant** makes that rebuild fast and tracked so nothing is forgotten.
+
+### 20.1 The Migration Assistant (Tools ▸ Migrate BarTender Templates…)
+
+1. **Browse** to your BarTender template folder and press **Scan**. Every `.btw` (including subfolders) appears in the list with its name, label size, and printer read from the file header. Files whose header can't be read show in red as *unreadable* — you can still migrate them, just enter the size yourself.
+2. Select a file and press **Create skeleton…**. This creates a `.lbl` template with the **correct size and name**, and optionally:
+   - a **backdrop image** — pick a scan/photo/screenshot of the old label; it is placed semi-transparent and **locked** on its own layer as a tracing aid. It **never prints** (its print condition is never met) — but still **delete the backdrop layer** once the rebuild is done.
+   - **fields from the label's data file** — pick the CSV/Excel it printed from; the headers become the template's fields with the column mapping and default data connection already set.
+3. Press **Open in Designer** and rebuild the label over the backdrop: text, barcodes, images, conditions.
+4. **Test-print and compare** against a BarTender-printed sample (and scan any barcodes), then set the row's status to **Done**.
+
+**Statuses:** Pending → Skeleton created → In progress → Done. Use **Skipped** for obsolete labels. Progress ("12 of 30 migrated") is stored in `BtwMigration.json` **in the shared templates folder**, so every station sees the same tracker. Notes are free text — use them for anything odd (fonts, sizes that changed, etc.).
+
+**Create all pending** makes blank skeletons (size + name only) for the whole library in one go — useful to see the full scope, then add backdrops label by label.
+
+> A skeleton never overwrites an existing template — if the name is taken it becomes "Name (2)".
+
+### 20.2 Order of Work (recommended)
+
+1. Run the scan so the tracker shows the true size of the library.
+2. Mark obsolete labels **Skipped** immediately — don't rebuild what nobody prints.
+3. Rebuild the highest-volume labels first; validate each on hardware (Section 21).
+4. Keep BarTender installed until every active label is **Done** — then the licence can lapse.
+
+---
+
+## 21. Hardware Validation (before production cut-over)
+
+Render parity on screen is **not** proof a label works: barcode scannability, sheet alignment, and duplex orientation can only be proven on the physical printer. Run this checklist **before** switching any label to production, and again after a printer/driver change.
+
+### 21.1 Create the Kit
+
+**Tools ▸ Create Print Validation Kit…** generates the `VALIDATE…` templates (plus two small CSV data files) into the templates folder. They are refreshed each time you run it.
+
+### 21.2 Thermal Scan Test (Zebra ZD621, 2″×1″ stock)
+
+Print each of these from Print Preview (or the Print Station) on the Zebra, then check:
+
+| Template | Pass criteria |
+|---|---|
+| `VALIDATE Zebra Code 128 GDI` | Scanner reads exactly `VG20260705`, first try, from ~10–30 cm |
+| `VALIDATE Zebra Code 128 ZPL` | Same — this one uses the native ZPL path (printer-engine barcode) |
+| `VALIDATE Zebra GS1-128 GDI` | Scanner reads the GS1 payload `(01)09506000134352(10)VALID8` (AIs may display without brackets) |
+| `VALIDATE Zebra QR GDI` | Phone camera / scanner reads `VANGO-QR-VALIDATE` |
+
+On every label, also **measure the printed border box: it must be 46.8 × 21.4 mm** (± 0.5 mm). Wrong size = DPI mismatch — check the template DPI (203) matches the printer model, and the driver's stock size.
+
+If bars look grey or bleed: adjust **darkness** (Label Setup) and clean the printhead, then re-test. If GDI scans but ZPL doesn't (or vice versa), note which — the two paths are independent; use the passing one until resolved.
+
+### 21.3 Avery 5160 Sheet Alignment (laser printers)
+
+1. Load a blank Avery 5160 (or 8160) sheet in the office printer.
+2. Open `VALIDATE 5160 Alignment` — its 30-row data file loads automatically. Print all records (one full sheet).
+3. **Pass:** every cell's border sits on the label die-cuts; cells are numbered 1–30 left-to-right, top-to-bottom.
+4. **Drift?** Measure how far the border is off in mm (e.g. everything 2 mm too low) and adjust **Margin left / Margin top** in Template ▸ Page Setup by that amount. Uniform-scale errors ("Fit to page") must be fixed in the print driver — scaling must be **100% / Actual size**.
+5. Repeat on **each** laser printer used for sheets — margins differ per device.
+
+### 21.4 Duplex Orientation (two-sided cards)
+
+1. Open `VALIDATE Duplex Front` (its 6-row data file loads automatically) and print all records **duplex** on Letter.
+2. Hold the sheet up to the light. **Pass:** each FRONT card's `↖ TOP-LEFT` marker sits exactly behind the BACK card's `↖ TOP-LEFT` for the **same cell number**, and both `▲ TOP EDGE` arrows point the same way.
+3. **Back upside-down?** The printer flipped on the short edge — set the driver/duplex option to **long-edge** flip.
+4. **Backs behind the wrong column?** Report it — the column mirroring is computed by the app and must not be worked around by editing templates.
+
+### 21.5 Sign-Off
+
+A label design goes to production only after: (1) its barcodes scan on the production printer, (2) dimensions/alignment pass on the actual stock, and (3) — for serialized labels — a 2–3 label test batch shows serials advancing. Record the date and printer in the migration tracker's Notes (Section 20) or the template name.
 
 ---
 

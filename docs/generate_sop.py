@@ -196,7 +196,8 @@ toc = [
     ('13.', 'The Print Station (Shop Floor)'), ('14.', 'Serial Numbers & Reprints'),
     ('15.', 'Label Setup, Settings & Shared Storage'), ('16.', 'Native ZPL Output (Opt-In)'),
     ('17.', 'JaneERP Integration'), ('18.', 'Troubleshooting & FAQs'),
-    ('19.', 'IT Setup & Deployment'),
+    ('19.', 'IT Setup & Deployment'), ('20.', 'Migrating from BarTender'),
+    ('21.', 'Hardware Validation (before production cut-over)'),
 ]
 for num, title in toc:
     p = doc.add_paragraph(); p.paragraph_format.space_after = Pt(2)
@@ -491,6 +492,52 @@ add_bullet('**GET /printers** — installed printer names: {"success":true,"prin
 add_bullet('**POST /api/print** — body { "templatePath": "DoorTreats-50ml.btw", "printerName": "…", "jobName": "…", "labels": [ {field: value}, … ] }. Each labels entry is ONE physical label (send the same data twice for two labels).')
 add_para('Only the **file name** of templatePath matters — ".btw"/".lbl"/bare names are matched to a LabelDesigner template by NAME (recreate each .btw design once under the same name). The whole request validates before anything prints (all-or-nothing). A missing/offline printer fails the job loudly — never a silent fallback. Responses: {"success":true,"labelsRendered":N,"printer":"…"} or {"success":false,"error":"…"}. Printed labels appear in the normal history (source HTTP).')
 add_warning('The API listens on localhost only — other machines cannot reach it. Run the calling system on the same PC as the Print Station.')
+page_break()
+
+# 20 BARTENDER MIGRATION
+add_heading('20. Migrating from BarTender', 1)
+add_para('BarTender\'s .btw format is a proprietary binary and **cannot be converted losslessly** — each label is rebuilt once in the Designer. The migration assistant makes the rebuild fast and tracked so nothing is forgotten.')
+add_heading('20.1  The Migration Assistant (Tools > Migrate BarTender Templates…)', 2)
+add_numbered('**Browse** to your BarTender template folder and press **Scan**. Every .btw (subfolders included) is listed with its name, label size and printer read from the file header. Unreadable headers show in red — you can still migrate those, just enter the size yourself.')
+add_numbered('Select a file and press **Create skeleton…** — a .lbl is created with the correct size and name, and optionally: a **backdrop image** (scan/photo/screenshot of the old label, placed semi-transparent + locked as a tracing aid — it never prints, but still delete the backdrop layer when done) and **fields from the label\'s data file** (CSV/Excel headers become the template\'s fields with the column mapping and data connection already set).')
+add_numbered('Press **Open in Designer** and rebuild the label over the backdrop.')
+add_numbered('Test-print, compare against a BarTender-printed sample, scan any barcodes, then set the row\'s status to **Done**.')
+add_para('**Statuses:** Pending → Skeleton created → In progress → Done; use **Skipped** for obsolete labels. Progress is saved in BtwMigration.json in the shared templates folder, so every station sees the same tracker. **Create all pending** makes blank skeletons for the whole library in one go.')
+add_note('A skeleton never overwrites an existing template — if the name is taken it becomes "Name (2)".')
+add_heading('20.2  Order of Work', 2)
+add_numbered('Scan, so the tracker shows the true size of the library.')
+add_numbered('Mark obsolete labels Skipped immediately — don\'t rebuild what nobody prints.')
+add_numbered('Rebuild the highest-volume labels first; validate each on hardware (Section 21).')
+add_numbered('Keep BarTender installed until every active label is Done — then the licence can lapse.')
+page_break()
+
+# 21 HARDWARE VALIDATION
+add_heading('21. Hardware Validation (before production cut-over)', 1)
+add_para('Render parity on screen is **not** proof a label works: barcode scannability, sheet alignment and duplex orientation can only be proven on the physical printer. Run this checklist before switching any label to production, and again after a printer or driver change.')
+add_heading('21.1  Create the Kit', 2)
+add_para('**Tools > Create Print Validation Kit…** generates the VALIDATE… templates (plus two small CSV data files) into the templates folder. Running it again refreshes them.')
+add_heading('21.2  Thermal Scan Test (Zebra ZD621, 2"x1" stock)', 2)
+add_table(['Template', 'Pass criteria'], [
+    ['VALIDATE Zebra Code 128 GDI', 'Scanner reads exactly VG20260705, first try, from ~10–30 cm'],
+    ['VALIDATE Zebra Code 128 ZPL', 'Same — this one uses the native ZPL path (printer-engine barcode)'],
+    ['VALIDATE Zebra GS1-128 GDI', 'Scanner reads the GS1 payload (01)09506000134352(10)VALID8 (AIs may display without brackets)'],
+    ['VALIDATE Zebra QR GDI', 'Phone camera / scanner reads VANGO-QR-VALIDATE'],
+], col_widths=[2.3, 4.2])
+add_para('On every label also **measure the printed border box: it must be 46.8 x 21.4 mm (± 0.5 mm)**. Wrong size = DPI mismatch — check the template DPI (203) matches the printer model, and the driver\'s stock size.')
+add_para('If bars look grey or bleed: adjust **darkness** (Label Setup) and clean the printhead, then re-test. If GDI scans but ZPL doesn\'t (or vice versa), note which — the paths are independent; use the passing one until resolved.')
+add_heading('21.3  Avery 5160 Sheet Alignment (laser printers)', 2)
+add_numbered('Load a blank Avery 5160 (or 8160) sheet in the office printer.')
+add_numbered('Open VALIDATE 5160 Alignment — its 30-row data file loads automatically. Print all records (one full sheet).')
+add_numbered('**Pass:** every cell\'s border sits on the label die-cuts; cells are numbered 1–30 left-to-right, top-to-bottom.')
+add_numbered('**Drift?** Measure the offset in mm and adjust Margin left / Margin top in Template > Page Setup by that amount. Uniform-scale errors must be fixed in the print driver — scaling must be 100% / Actual size.')
+add_numbered('Repeat on **each** laser printer used for sheets — margins differ per device.')
+add_heading('21.4  Duplex Orientation (two-sided cards)', 2)
+add_numbered('Open VALIDATE Duplex Front (its 6-row data file loads automatically) and print all records **duplex** on Letter.')
+add_numbered('Hold the sheet up to the light. **Pass:** each FRONT card\'s TOP-LEFT marker sits exactly behind the BACK card\'s TOP-LEFT for the same cell number, and both TOP EDGE arrows point the same way.')
+add_numbered('**Back upside-down?** The printer flipped on the short edge — set the driver/duplex option to long-edge flip.')
+add_numbered('**Backs behind the wrong column?** Report it — the column mirroring is computed by the app and must not be worked around by editing templates.')
+add_heading('21.5  Sign-Off', 2)
+add_para('A label design goes to production only after: (1) its barcodes scan on the production printer, (2) dimensions/alignment pass on the actual stock, and (3) — for serialized labels — a 2–3 label test batch shows serials advancing. Record the date and printer in the migration tracker\'s Notes or the template name.')
 
 # FOOTER
 doc.add_paragraph()

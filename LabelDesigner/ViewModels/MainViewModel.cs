@@ -91,6 +91,58 @@ public class MainViewModel : ViewModelBase
         dlg.ShowDialog();
     }
 
+    // ─── Tools: BarTender migration + validation kit ─────────────────────────────
+    public ICommand OpenBtwMigrationCommand    => new RelayCommand(OpenBtwMigration);
+    public ICommand CreateValidationKitCommand => new RelayCommand(CreateValidationKit);
+
+    private void OpenBtwMigration()
+    {
+        var dlg = new Views.BtwMigrationDialog { Owner = Application.Current.MainWindow };
+        dlg.ShowDialog();
+        LoadTemplateList();   // skeletons created inside the dialog should appear immediately
+        if (dlg.TemplateToOpen != null) OpenRecentFile(dlg.TemplateToOpen);
+    }
+
+    private void CreateValidationKit()
+    {
+        var dir = Services.AppConfig.TemplatesDir;
+        var confirm = MessageBox.Show(
+            "This creates the hardware-validation kit in the templates folder:\n\n" +
+            $"{dir}\n\n" +
+            "• 4 Zebra scan-test labels (Code 128 GDI + ZPL, GS1-128, QR)\n" +
+            "• 1 Avery 5160 alignment sheet + its 30-row CSV\n" +
+            "• 1 duplex front/back card pair + its 6-row CSV\n\n" +
+            "Existing VALIDATE templates and CSVs are refreshed. Continue?",
+            "Create Print Validation Kit", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, ValidationKit.AlignmentDataFileName), ValidationKit.BuildAlignmentCsv());
+            File.WriteAllText(Path.Combine(dir, ValidationKit.DuplexDataFileName),    ValidationKit.BuildDuplexCsv());
+
+            var templates = ValidationKit.BuildTemplates(dir);
+            foreach (var t in templates)
+                _templateService.Save(t, _templateService.GetDefaultPath(t));
+
+            LoadTemplateList();
+            StatusMessage = $"Validation kit created: {templates.Count} templates + 2 CSV files in {dir}.";
+            MessageBox.Show(
+                "Validation kit created.\n\n" +
+                "Run the checklist in the SOP's \"Hardware validation\" section:\n" +
+                "1. Print the four VALIDATE Zebra labels on the ZD621 and scan each barcode.\n" +
+                "2. Print VALIDATE 5160 Alignment onto a blank Avery 5160 sheet and check the borders.\n" +
+                "3. Print VALIDATE Duplex Front (duplex, long-edge flip) and check front/back alignment.",
+                "Create Print Validation Kit", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Error("Validation kit creation failed.", ex);
+            MessageBox.Show("Validation kit creation failed:\n" + ex.Message,
+                "Create Print Validation Kit", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     // ─── Export (PNG / PDF / ZPL) ────────────────────────────────────────────────
     public ICommand ExportPngCommand => new RelayCommand(ExportPng, () => Designer.Elements.Any());
     public ICommand ExportPdfCommand => new RelayCommand(ExportPdf, () => Designer.Elements.Any());
@@ -299,7 +351,7 @@ public class MainViewModel : ViewModelBase
         };
         if (fileDlg.ShowDialog() != true) return;
 
-        var meta      = Services.BtwImportService.ReadHeader(fileDlg.FileName);
+        var meta      = BtwImportService.ReadHeader(fileDlg.FileName);
         var importDlg = new Views.BtwImportDialog(fileDlg.FileName, meta) { Owner = Application.Current.MainWindow };
         if (importDlg.ShowDialog() != true) return;
 

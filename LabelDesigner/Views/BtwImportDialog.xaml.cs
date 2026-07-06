@@ -1,4 +1,4 @@
-using LabelDesigner.Services;
+using LabelDesigner.Core.Services;
 using System.IO;
 using System.Windows;
 

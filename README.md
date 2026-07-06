@@ -20,7 +20,7 @@ variable data from Excel/CSV, computed data sources, conditional printing, a rea
 
 | Project | Type | Contents |
 |---|---|---|
-| `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `TemplateRoute`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`, `TemplateRouter`). No WPF. |
+| `LabelDesigner.Core` | .NET 8 class library | Models (`LabelTemplate`, elements, `DataSourceDefinition`, `FieldDefinition`, `PrinterProfile`, `TemplateRoute`, `LabelJob`) and pure services (`TemplateService`, `BarcodeValidator`, `FieldValidator`, `FormulaEvaluator`, `SerialFormatting`, `TemplateRouter`, `BtwImportService`, `BtwMigrationService`, `ValidationKit`). No WPF. |
 | `LabelDesigner` | .NET 8 WPF (WinExe) | ViewModels, Views, Designer canvas, Behaviors (attached properties), and services (`PrintService`, `ZplRenderer`, `RawPrinter`, `IpcServer`, `HttpPrintService`, `SerialCounterStore`, `PrintHistoryService`, `WatchFolderService`, `PrintJobParser`, `JobPrinter`, `TemplateRouteStore`, `PdfExporter`, `AppConfig`, `UserSettings`, `LogService`, importers). |
 | `LabelDesigner.Tests` | xUnit | Unit tests for the pure logic (validators, conditions, formulas, serial formatting, ZPL generation, template round-trip, template routing, job parsing, watch-folder file mechanics, shim HTTP contract helpers, PDF skeleton, snap math, lock/group behaviour). |
 
@@ -81,6 +81,8 @@ safe across machines.
 - **Smart-snap guides** (`SnapSolver` + `DesignerCanvas`, "Guides" toolbar toggle): while dragging, the selection's bounding-box edges/centre snap to other elements' edges/centres and the canvas edges/centre, with pink dashed guide lines at the match.
 - **Export** (File ▸ Export): the current label (live row or test data — same values as the preview) as **PNG** at template DPI, **PDF** at exact label size (`PdfExporter`, dependency-free single-image PDF — pixel-identical to the preview, not a re-layout), or **ZPL** text.
 - **Sheet printing** (`PageLayout` on the template, edited via Template ▸ Page Setup; `PrintService.PrintRows` + `SheetEmitter`): N-up composition onto Letter/A4/custom pages for sheet printers — Avery 5160 preset (30-up bin/address labels), centre-1-label (cards), custom grids (menus). Batch prints **flow across cells** with a "start at label #" for part-used sheets; jobs whose rows route to **different templates** fill cells in row order (mixed flavor-card menus — all templates must share label size + grid, enforced loudly); optional **duplex back template** per sheet with mirrored columns for long-edge flip. GDI only — ZPL ignores layouts (a Zebra IS label media). Preview composes real sheets (`RenderSheetPreview`, pixel-tested) — in both the Designer's Print Preview AND the Print Station's job screen (◄ ► page nav, live-updating as rows are ticked).
+- **BarTender migration assistant** (Tools ▸ Migrate BarTender Templates…; `BtwMigrationService`/`BtwMigrationStore` in Core): scans a `.btw` folder (header metadata only — the body is proprietary binary, auto-conversion is deliberately not attempted), tracks per-file status/notes in a shared `BtwMigration.json` (templates dir), and creates `.lbl` **skeletons**: correct size + name, optional locked 35 %-opacity backdrop image to trace over (its print condition references a field nothing supplies, so it never prints), optional field seeding from the label's CSV/Excel headers (fields + column mapping + data connection in one step). Skeletons never overwrite an existing template.
+- **Print validation kit** (Tools ▸ Create Print Validation Kit…; `ValidationKit` in Core): generates the `VALIDATE…` hardware sign-off templates — Zebra scan tests (Code 128 GDI **and** ZPL, GS1-128, QR, each with a 46.8 × 21.4 mm dimension-check border), an Avery 5160 alignment sheet (30-row CSV auto-connected), and a duplex front/back card pair (long-edge-flip orientation check). Checklist: SOP §21.
 
 ## Documentation
 
@@ -105,5 +107,5 @@ safe across machines.
 - Watch-folder and HTTP-API config changes apply when the Print Station next starts (no live reload yet).
 - The HTTP API binds `http://localhost:<port>/` only. Exposing it to other machines would need an
   admin URL ACL (`netsh http add urlacl`) and a deliberate code change — left out on purpose.
-- Not yet done: GS1 AI builder, `--print` CLI, curved text, signed installer/auto-update,
-  guided `.btw` migration. See the team's roadmap notes for priorities.
+- Not yet done: GS1 AI builder, `--print` CLI, curved text, signed installer/auto-update.
+  See the team's roadmap notes for priorities.

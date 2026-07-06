@@ -46,6 +46,9 @@ public static class UserSettings
         /// Station: GET /health, GET /printers, POST /api/print. Off by default.</summary>
         public bool HttpApiEnabled { get; set; }
         public int HttpApiPort { get; set; } = 3100;
+
+        /// <summary>Last folder scanned by the BarTender migration assistant.</summary>
+        public string BtwMigrationFolder { get; set; } = "";
     }
 
     private static readonly object _lock = new();
@@ -71,6 +74,7 @@ public static class UserSettings
                 _cache ??= new Data();
                 _cache.WatchFolders ??= new();      // settings.json predating this field
                 _cache.OperatorName ??= "";
+                _cache.BtwMigrationFolder ??= "";
                 if (_cache.HttpApiPort <= 0 || _cache.HttpApiPort > 65535) _cache.HttpApiPort = 3100;
                 return _cache;
             }

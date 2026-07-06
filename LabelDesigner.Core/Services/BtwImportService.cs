@@ -1,8 +1,7 @@
-using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace LabelDesigner.Services;
+namespace LabelDesigner.Core.Services;
 
 public record BtwMetadata(
     string Title,
