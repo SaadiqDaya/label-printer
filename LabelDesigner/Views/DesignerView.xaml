@@ -63,13 +63,19 @@
                             <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="5" Opacity="0.55"/>
                         </Border.Effect>
 
-                        <!-- Label canvas — LayoutTransform scales it for display while preserving coordinates -->
+                        <!-- Label canvas — LayoutTransform scales it for display while preserving coordinates.
+                             TextFormattingMode MUST stay Ideal here: the themed window sets Display mode
+                             (crisp UI chrome), but Display-mode glyphs are pixel-snapped at nominal size
+                             and turn blurry under the zoom ScaleTransform. Ideal scales geometrically and
+                             matches the print path, which also renders in Ideal. -->
                         <designer:DesignerCanvas x:Name="LabelCanvas"
                                                  Width="{Binding CanvasWidthPx}"
                                                  Height="{Binding CanvasHeightPx}"
                                                  Background="White"
                                                  Focusable="True"
-                                                 ClipToBounds="True">
+                                                 ClipToBounds="True"
+                                                 TextOptions.TextFormattingMode="Ideal"
+                                                 UseLayoutRounding="False">
                             <designer:DesignerCanvas.LayoutTransform>
                                 <ScaleTransform ScaleX="{Binding ViewportScale}"
                                                 ScaleY="{Binding ViewportScale}"/>
