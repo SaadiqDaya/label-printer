@@ -28,7 +28,10 @@ public partial class App : Application
 
         LogService.Info($"LabelDesigner started ({(operatorMode ? "Print Station" : "Designer")} mode).");
 
-        Window main = operatorMode ? new Views.PrintStationWindow() : new Views.MainWindow();
+        // First non-flag argument may be a template file to open (double-click / capture tooling).
+        string? openPath = e.Args.FirstOrDefault(a => !a.StartsWith("-") && !a.StartsWith("/") && System.IO.File.Exists(a));
+
+        Window main = operatorMode ? new Views.PrintStationWindow() : new Views.MainWindow(openPath);
         MainWindow = main;
         main.Show();
     }

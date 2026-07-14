@@ -15,6 +15,22 @@
     </Window.Resources>
 
     <DockPanel>
+        <!-- ── Tenxs ink header (suite standard) ──────────────────────────── -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource Ink}" Padding="14,8">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Tenxs" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
+                           FontSize="20" Foreground="White" VerticalAlignment="Center"/>
+                <Border Background="{StaticResource Cyan}" CornerRadius="5" Padding="7,2"
+                        Margin="10,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="LABEL" FontFamily="{StaticResource MonoFont}" FontWeight="Bold"
+                               FontSize="12" Foreground="#08343B"/>
+                </Border>
+                <TextBlock Text="// Label Designer" FontFamily="{StaticResource BodySemiFont}"
+                           FontSize="15" Foreground="{StaticResource Cyan}" Margin="14,0,0,0"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
         <!-- ── Menu ─────────────────────────────────────────────────────── -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">

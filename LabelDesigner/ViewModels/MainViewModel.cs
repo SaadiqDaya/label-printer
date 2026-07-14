@@ -234,7 +234,7 @@ public class MainViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(path)) OpenRecentFile(path);
     });
 
-    private void OpenRecentFile(string path)
+    public void OpenRecentFile(string path)
     {
         var template = _templateService.Load(path);
         if (template == null) { MessageBox.Show($"Could not load:\n{path}", "Error"); return; }

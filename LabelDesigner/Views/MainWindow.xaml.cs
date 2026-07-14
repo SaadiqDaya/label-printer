@@ -13,11 +13,16 @@ public partial class MainWindow : Window
     private readonly IpcServer _ipc = new();
     private bool _listSelectionChanging;
 
-    public MainWindow()
+    public MainWindow(string? openPath = null)
     {
         InitializeComponent();
         _vm = new MainViewModel();
         DataContext = _vm;
+
+        // Open a template passed on the command line (double-click a .lbl, or capture tooling).
+        if (!string.IsNullOrWhiteSpace(openPath) && System.IO.File.Exists(openPath))
+            Dispatcher.BeginInvoke(new Action(() => _vm.OpenRecentFile(openPath)),
+                                   System.Windows.Threading.DispatcherPriority.Loaded);
 
         // All cross-component event wires use named methods so OnClosed can detach them.
         DesignerView.Canvas.SelectionChanged += OnCanvasSelectionChanged;
